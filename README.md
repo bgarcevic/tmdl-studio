@@ -15,6 +15,21 @@ TMDL Inspector is a VS Code extension designed to help developers understand and
 * Provide basic impact analysis capabilities.
 * Report syntax errors and inconsistencies in TMDL files.
 
+## Requirements
+
+If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+
+## Extension Settings
+
+Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+
+For example:
+
+This extension contributes the following settings:
+
+* `myExtension.enable`: Enable/disable this extension.
+* `myExtension.thing`: Set to `blah` to do something.
+
 ## Backlog
 
 | ID        | Type       | Title                                             | Description                                                                                                                                                                                                                           | Priority | Status     | Effort | Dependencies | Notes/Acceptance Criteria                                                                                                                                                                                             |
@@ -50,3 +65,20 @@ TMDL Inspector is a VS Code extension designed to help developers understand and
 * Editing or modifying TMDL files directly within the visualization.
 * Support for older versions of Tabular Models (below compatibility level 1200).
 * Full compatibility with the entire Tabular Object Model (TOM) API beyond dependency analysis.
+
+## Known Issues
+
+Calling out known issues can help limit users opening duplicate issues against your extension.
+
+## Release Notes
+
+Users appreciate release notes as you update your extension.
+
+---
+
+## Following extension guidelines
+
+Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+
+* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+
