@@ -3,6 +3,7 @@
  */
 export enum TokenType {
     Whitespace = 'Whitespace',
+    LineBreak = 'LineBreak',
     Identifier = 'Identifier',
     Keyword = 'Keyword',
     Property = 'Property',
@@ -10,7 +11,6 @@ export enum TokenType {
     Colon = 'Colon',
     String = 'String',
     Comment = 'Comment',
-    LineBreak = 'LineBreak',
     Invalid = 'Invalid'
 }
 

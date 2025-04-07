@@ -23,20 +23,10 @@ export class TmdlTokenizer {
         this.column = 1;
 
         while (!this.isEOF()) {
-            // Skip whitespace at the start of a line (for indentation)
-            if (this.column === 1) {
-                const indent = this.tokenizeIndentation();
-                if (indent > 0) {
-                    continue;
-                }
-            }
-
             const char = this.peek();
 
-            if (this.isWhitespace(char)) {
-                // Skip non-indentation whitespace
-                this.advance();
-                this.column++;
+            if (this.column === 1 && this.isWhitespace(char)) {
+                this.tokenizeIndentation();
             } else if (char === '\n' || char === '\r') {
                 if (char === '\r' && this.peekNext() === '\n') {
                     this.advance(); // Skip \r in \r\n
@@ -55,8 +45,13 @@ export class TmdlTokenizer {
                 this.advance();
             } else if (char === '"' || char === "'") {
                 this.tokenizeString();
+            } else if (this.isWhitespace(char)) {
+                this.advance();
+                this.column++;
             } else if (this.isIdentifierStart(char)) {
                 this.tokenizeIdentifier();
+            } else if (this.isDigit(char)) {
+                this.tokenizeNumber();
             } else {
                 this.addToken(TokenType.Invalid, char, 1);
                 this.advance();
@@ -66,9 +61,9 @@ export class TmdlTokenizer {
         return this.tokens;
     }
 
-    private tokenizeIndentation(): number {
+    private tokenizeIndentation(): void {
         let spaces = 0;
-        let start = this.pos;
+        const start = this.pos;
 
         while (!this.isEOF() && this.isWhitespace(this.peek())) {
             spaces++;
@@ -76,11 +71,8 @@ export class TmdlTokenizer {
         }
 
         if (spaces > 0) {
-            this.addToken(TokenType.Whitespace, this.source.substring(start, this.pos), spaces);
-            return spaces;
+            this.addToken(TokenType.Whitespace, " ".repeat(spaces), spaces);
         }
-
-        return 0;
     }
 
     private tokenizeComment(): void {
@@ -136,7 +128,7 @@ export class TmdlTokenizer {
         let start = this.pos;
         let length = 0;
 
-        while (!this.isEOF() && this.isIdentifierPart(this.peek())) {
+        while (!this.isEOF() && (this.isIdentifierPart(this.peek()) || this.peek() === '-')) {
             length++;
             this.advance();
         }
@@ -144,6 +136,19 @@ export class TmdlTokenizer {
         const value = this.source.substring(start, start + length);
         const type = this.getIdentifierType(value);
         this.addToken(type, value, length);
+    }
+
+    private tokenizeNumber(): void {
+        let start = this.pos;
+        let length = 0;
+
+        while (!this.isEOF() && this.isDigit(this.peek())) {
+            length++;
+            this.advance();
+        }
+
+        const value = this.source.substring(start, start + length);
+        this.addToken(TokenType.Identifier, value, length);
     }
 
     private getIdentifierType(value: string): TokenType {
@@ -201,5 +206,9 @@ export class TmdlTokenizer {
 
     private isIdentifierPart(char: string): boolean {
         return /[a-zA-Z0-9_]/.test(char);
+    }
+
+    private isDigit(char: string): boolean {
+        return /[0-9]/.test(char);
     }
 }
