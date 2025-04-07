@@ -63,7 +63,6 @@ export class TmdlTokenizer {
 
     private tokenizeIndentation(): void {
         let spaces = 0;
-        const start = this.pos;
 
         while (!this.isEOF() && this.isWhitespace(this.peek())) {
             spaces++;

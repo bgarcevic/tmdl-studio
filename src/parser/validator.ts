@@ -20,15 +20,15 @@ export class TmdlValidator {
 
         let pos = 0;
         while (pos < this.tokens.length) {
-            const token = this.tokens[pos];
-
-            if (token.type === TokenType.LineBreak || 
-                token.type === TokenType.Whitespace ||
-                token.type === TokenType.Comment) {
+            while (pos < this.tokens.length && this.isSkippable(this.tokens[pos])) {
                 pos++;
-                continue;
+            }
+            
+            if (pos >= this.tokens.length) {
+                break;
             }
 
+            const token = this.tokens[pos];
             if (token.type !== TokenType.Keyword) {
                 this.addError(
                     'Expected top-level declaration (database, model, table, relationship, or expression)',
@@ -49,8 +49,7 @@ export class TmdlValidator {
         let pos = startPos + 1;
 
         // Skip whitespace after keyword
-        while (pos < this.tokens.length && 
-               this.tokens[pos].type === TokenType.Whitespace) {
+        while (pos < this.tokens.length && this.tokens[pos].type === TokenType.Whitespace) {
             pos++;
         }
 
@@ -62,57 +61,62 @@ export class TmdlValidator {
             return this.skipToNextLine(startPos);
         }
 
-        pos++;
-
-        // Find the start of the next line
-        while (pos < this.tokens.length && 
-               this.tokens[pos].type !== TokenType.LineBreak) {
-            pos++;
-        }
-        pos++;
+        // Skip to end of line
+        pos = this.skipToNextLine(pos);
 
         // Validate the block of properties
-        this.expectedIndent = this.config.indentSize;
-        return this.validateBlock(pos);
+        return this.validateBlock(pos, this.config.indentSize);
     }
 
-    private validateBlock(startPos: number): number {
+    private validateBlock(startPos: number, indent: number): number {
         let pos = startPos;
-        const blockIndent = this.expectedIndent;
+        const oldIndent = this.expectedIndent;
+        this.expectedIndent = indent;
 
         while (pos < this.tokens.length) {
             // Skip empty lines and comments
-            if (this.isSkippableLine(pos)) {
-                pos = this.skipToNextLine(pos);
-                continue;
-            }
-
-            // Check indentation
-            const indentToken = this.tokens[pos];
-            if (indentToken.type === TokenType.Whitespace) {
-                if (indentToken.value.length !== blockIndent) {
-                    this.addError(
-                        `Invalid indentation: expected ${blockIndent} spaces`,
-                        indentToken
-                    );
-                }
+            while (pos < this.tokens.length && this.isSkippable(this.tokens[pos])) {
                 pos++;
-            } else if (indentToken.type === TokenType.Keyword && !indentToken.indent) {
-                // End of block when we find an unindented keyword
-                return pos;
-            } else if (!indentToken.indent) {
-                this.addError('Invalid indentation', indentToken);
-                return this.skipToNextLine(pos);
             }
 
-            // Validate the line content
-            pos = this.validateLine(pos);
+            if (pos >= this.tokens.length) {
+                break;
+            }
+
+            const token = this.tokens[pos];
+            
+            // Check if we're still in the block
+            if (this.getEffectiveIndent(token) < indent) {
+                this.expectedIndent = oldIndent;
+                return pos;
+            }
+
+            // Validate line content
+            if (token.type === TokenType.Whitespace && 
+                token.value.length !== this.expectedIndent) {
+                this.addError(
+                    `Invalid indentation: expected ${this.expectedIndent} spaces`,
+                    token
+                );
+            }
+
+            pos = this.validateProperty(pos);
         }
 
+        this.expectedIndent = oldIndent;
         return pos;
     }
 
-    private validateLine(pos: number): number {
+    private validateProperty(pos: number): number {
+        // Skip initial whitespace
+        while (pos < this.tokens.length && this.tokens[pos].type === TokenType.Whitespace) {
+            pos++;
+        }
+
+        if (pos >= this.tokens.length) {
+            return pos;
+        }
+
         const token = this.tokens[pos];
 
         // Handle boolean properties
@@ -123,43 +127,35 @@ export class TmdlValidator {
         if (token.type === TokenType.Identifier || token.type === TokenType.String) {
             let current = pos + 1;
 
-            // Skip whitespace after identifier
+            // Skip whitespace after property name
             while (current < this.tokens.length && 
                    this.tokens[current].type === TokenType.Whitespace) {
                 current++;
             }
 
             if (current >= this.tokens.length) {
-                this.addError('Unexpected end of file', token);
-                return this.tokens.length;
+                return current;
             }
 
             const delimiter = this.tokens[current];
             if (delimiter.type === TokenType.Colon || delimiter.type === TokenType.Equals) {
                 current++;
 
-                // Skip whitespace after delimiter
-                while (current < this.tokens.length && 
-                       this.tokens[current].type === TokenType.Whitespace) {
-                    current++;
-                }
-
-                // Validate property value
-                if (current >= this.tokens.length || 
-                    this.tokens[current].type === TokenType.LineBreak) {
-                    this.addError('Expected property value', delimiter);
-                    return delimiter.type === TokenType.Equals ? 
-                           this.validateExpression(current) : 
-                           this.skipToNextLine(current);
-                }
-
                 // Handle multi-line expressions
                 if (delimiter.type === TokenType.Equals) {
                     return this.validateExpression(current);
                 }
 
-                // Handle single line value
-                return this.skipToNextLine(current);
+                // Validate property value exists
+                while (current < this.tokens.length && 
+                       this.tokens[current].type === TokenType.Whitespace) {
+                    current++;
+                }
+
+                if (current >= this.tokens.length || 
+                    this.tokens[current].type === TokenType.LineBreak) {
+                    this.addError('Expected property value', delimiter);
+                }
             }
         }
 
@@ -167,49 +163,51 @@ export class TmdlValidator {
     }
 
     private validateExpression(startPos: number): number {
-        const oldIndent = this.expectedIndent;
-        this.expectedIndent += this.config.indentSize;
-        
-        let pos = startPos;
+        const expressionIndent = this.expectedIndent + this.config.indentSize;
+        let pos = this.skipToNextLine(startPos);
+
         while (pos < this.tokens.length) {
-            const token = this.tokens[pos];
-
-            if (this.isSkippableLine(pos)) {
-                pos = this.skipToNextLine(pos);
-                continue;
-            }
-
-            // Check expression indentation
-            if (token.type === TokenType.Whitespace) {
-                if (token.value.length !== this.expectedIndent) {
-                    this.addError(
-                        `Invalid expression indentation: expected ${this.expectedIndent} spaces`,
-                        token
-                    );
-                }
+            // Skip empty lines
+            while (pos < this.tokens.length && this.isSkippable(this.tokens[pos])) {
                 pos++;
-                continue;
             }
 
-            // End of expression when we find a token with less indentation
-            if (token.indent * this.config.indentSize < oldIndent) {
-                this.expectedIndent = oldIndent;
+            if (pos >= this.tokens.length) {
+                break;
+            }
+
+            const token = this.tokens[pos];
+            const currentIndent = this.getEffectiveIndent(token);
+
+            if (currentIndent < this.expectedIndent) {
                 return pos;
+            }
+
+            if (token.type === TokenType.Whitespace && 
+                token.value.length !== expressionIndent) {
+                this.addError(
+                    `Invalid expression indentation: expected ${expressionIndent} spaces`,
+                    token
+                );
             }
 
             pos = this.skipToNextLine(pos);
         }
 
-        this.expectedIndent = oldIndent;
         return pos;
     }
 
-    private isSkippableLine(pos: number): boolean {
-        const token = this.tokens[pos];
+    private isSkippable(token: Token): boolean {
         return token.type === TokenType.LineBreak || 
                token.type === TokenType.Comment ||
                (token.type === TokenType.Whitespace && 
-                this.peekNextType(pos) === TokenType.LineBreak);
+                this.peekNextType(this.tokens.indexOf(token)) === TokenType.LineBreak);
+    }
+
+    private getEffectiveIndent(token: Token): number {
+        return token.type === TokenType.Whitespace ? 
+               token.value.length : 
+               token.indent * this.config.indentSize;
     }
 
     private peekNextType(pos: number): TokenType | null {
@@ -217,11 +215,10 @@ export class TmdlValidator {
     }
 
     private skipToNextLine(pos: number): number {
-        while (pos < this.tokens.length && 
-               this.tokens[pos].type !== TokenType.LineBreak) {
+        while (pos < this.tokens.length && this.tokens[pos].type !== TokenType.LineBreak) {
             pos++;
         }
-        return pos + 1;
+        return Math.min(pos + 1, this.tokens.length);
     }
 
     private addError(message: string, token: Token): void {
