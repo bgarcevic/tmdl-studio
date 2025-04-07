@@ -47,10 +47,22 @@ export class TmdlValidator {
         this.pos++; // Consume identifier.
 
         this.skipToNextLine();
-        // If next non-skippable token is indented at least one level deeper, validate block.
-        const nextIndent = this.getCurrentLineIndent();
-        if (nextIndent >= expectedIndent + this.config.indentSize) {
-            this.validateBlock(expectedIndent + this.config.indentSize);
+        this.skipSkippable(); // Skip any blank lines after declaration
+        
+        // Check for block content
+        if (this.pos < this.tokens.length) {
+            const nextIndent = this.getCurrentLineIndent();
+            const expectedNextIndent = expectedIndent + this.config.indentSize;
+            if (nextIndent === expectedNextIndent) {
+                this.validateBlock(expectedNextIndent);
+            } else if (nextIndent > expectedIndent) {
+                // Wrong indentation level
+                this.addError(
+                    `Invalid indentation: expected ${expectedNextIndent} spaces, got ${nextIndent}`,
+                    this.tokens[this.pos]
+                );
+                this.skipToNextLine();
+            }
         }
     }
 
@@ -63,8 +75,8 @@ export class TmdlValidator {
             if (currentIndent < expectedIndent) {
                 // End of block.
                 return;
-            }
-            if (currentIndent > expectedIndent) {
+            } else if (currentIndent > expectedIndent) {
+                // Wrong indentation level
                 this.addError(
                     `Invalid indentation: expected ${expectedIndent} spaces, got ${currentIndent}`,
                     this.tokens[this.pos]
@@ -72,12 +84,16 @@ export class TmdlValidator {
                 this.skipToNextLine();
                 continue;
             }
+
             // At proper indent: skip indentation tokens if any.
             this.skipWhitespace();
             if (this.pos >= this.tokens.length) { break; }
+            
             const token = this.tokens[this.pos];
-            if (
-                token.type === TokenType.Keyword ||
+            if (token.type === TokenType.Keyword) {
+                // Handle nested declarations with next indentation level
+                this.validateDeclaration(expectedIndent);
+            } else if (
                 token.type === TokenType.Identifier ||
                 token.type === TokenType.String ||
                 token.type === TokenType.Property
