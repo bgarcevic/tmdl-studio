@@ -76,7 +76,6 @@ export class TmdlTokenizer {
         }
 
         if (spaces > 0) {
-            const indent = Math.floor(spaces / this.config.indentSize);
             this.addToken(TokenType.Whitespace, this.source.substring(start, this.pos), spaces);
             return spaces;
         }
