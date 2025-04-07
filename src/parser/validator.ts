@@ -4,6 +4,7 @@ export class TmdlValidator {
     private tokens: Token[];
     private diagnostics: ParserDiagnostic[] = [];
     private config: ParserConfig;
+    private pos: number = 0;
 
     constructor(tokens: Token[], config: ParserConfig = DEFAULT_CONFIG) {
         this.tokens = tokens;
@@ -11,217 +12,197 @@ export class TmdlValidator {
     }
 
     /**
-     * Validate the TMDL content based on tokens
+     * Validate the TMDL content based on tokens.
      */
     public validate(): ParserDiagnostic[] {
         this.diagnostics = [];
+        this.pos = 0;
 
-        let pos = 0;
-        while (pos < this.tokens.length) {
-            // Skip whitespace and comments at top level
-            while (pos < this.tokens.length && 
-                   (this.tokens[pos].type === TokenType.Whitespace || 
-                    this.tokens[pos].type === TokenType.LineBreak ||
-                    this.tokens[pos].type === TokenType.Comment)) {
-                pos++;
+        while (this.pos < this.tokens.length) {
+            this.skipSkippable();
+            if (this.pos >= this.tokens.length) break;
+            const token = this.tokens[this.pos];
+            if (token.type === TokenType.Keyword) {
+                this.validateDeclaration(0); // Top-level declarations have indent 0.
+            } else {
+                this.addError('Expected top-level declaration', token);
+                this.skipToNextLine();
             }
-
-            if (pos >= this.tokens.length) {
-                break;
-            }
-
-            const token = this.tokens[pos];
-            if (token.type !== TokenType.Keyword) {
-                this.addError(
-                    'Expected top-level declaration (database, model, table, relationship, or expression)',
-                    token
-                );
-                pos = this.skipToNextLine(pos);
-                continue;
-            }
-
-            pos = this.validateDeclaration(pos);
         }
-
         return this.diagnostics;
     }
 
-    private validateDeclaration(pos: number): number {
-        pos++; // Skip keyword
+    private validateDeclaration(expectedIndent: number): void {
+        const keywordToken = this.tokens[this.pos];
+        this.pos++; // Consume keyword.
+        this.skipWhitespace();
 
-        // Skip whitespace after keyword
-        while (pos < this.tokens.length && 
-               this.tokens[pos].type === TokenType.Whitespace) {
-            pos++;
+        if (this.pos >= this.tokens.length ||
+            (this.tokens[this.pos].type !== TokenType.Identifier &&
+             this.tokens[this.pos].type !== TokenType.String)) {
+            this.addError('Expected identifier or string literal after keyword', keywordToken);
+            this.skipToNextLine();
+            return;
         }
+        this.pos++; // Consume identifier.
 
-        // Validate name
-        if (pos >= this.tokens.length || 
-            (this.tokens[pos].type !== TokenType.Identifier && 
-             this.tokens[pos].type !== TokenType.String)) {
-            return this.skipToNextLine(pos);
+        this.skipToNextLine();
+        // If next non-skippable token is indented at least one level deeper, validate block.
+        const nextIndent = this.getCurrentLineIndent();
+        if (nextIndent >= expectedIndent + this.config.indentSize) {
+            this.validateBlock(expectedIndent + this.config.indentSize);
         }
-
-        pos++; // Skip name
-
-        // Skip to end of declaration line
-        while (pos < this.tokens.length && 
-               this.tokens[pos].type !== TokenType.LineBreak) {
-            pos++;
-        }
-        if (pos < this.tokens.length) {
-            pos++; // Skip line break
-        }
-
-        return this.validateBlock(pos);
     }
 
-    private validateBlock(pos: number): number {
-        const expectedIndent = this.config.indentSize;
+    private validateBlock(expectedIndent: number): void {
+        while (this.pos < this.tokens.length) {
+            this.skipSkippable();
+            if (this.pos >= this.tokens.length) break;
 
-        while (pos < this.tokens.length) {
-            // Skip empty lines
-            if (this.isEmptyLine(pos)) {
-                pos = this.skipToNextLine(pos);
+            const currentIndent = this.getCurrentLineIndent();
+            if (currentIndent < expectedIndent) {
+                // End of block.
+                return;
+            }
+            if (currentIndent > expectedIndent) {
+                this.addError(
+                    `Invalid indentation: expected ${expectedIndent} spaces, got ${currentIndent}`,
+                    this.tokens[this.pos]
+                );
+                this.skipToNextLine();
                 continue;
             }
-
-            // Check indentation level
-            if (this.tokens[pos].type === TokenType.Whitespace) {
-                if (this.tokens[pos].value.length !== expectedIndent) {
-                    // Only add error if indentation is wrong and this isn't the end of block
-                    const nextNonWhitespace = this.findNextNonWhitespace(pos);
-                    if (nextNonWhitespace && 
-                        nextNonWhitespace.type !== TokenType.LineBreak &&
-                        nextNonWhitespace.type !== TokenType.Comment) {
-                        this.addError('Invalid indentation', this.tokens[pos]);
-                    }
-                }
-                pos++;
-                continue;
+            // At proper indent: skip indentation tokens if any.
+            this.skipWhitespace();
+            if (this.pos >= this.tokens.length) { break; }
+            const token = this.tokens[this.pos];
+            if (
+                token.type === TokenType.Keyword ||
+                token.type === TokenType.Identifier ||
+                token.type === TokenType.String ||
+                token.type === TokenType.Property
+            ) {
+                this.validatePropertyLine(expectedIndent);
+            } else {
+                this.addError('Expected property, keyword, or identifier', token);
+                this.skipToNextLine();
             }
-
-            // Check if we're still in the block
-            if (this.tokens[pos].type === TokenType.Keyword && 
-                !this.tokens[pos].indent) {
-                return pos;
-            }
-
-            // Handle property or child declaration
-            pos = this.validateProperty(pos);
         }
-
-        return pos;
     }
 
-    private validateProperty(pos: number): number {
-        const token = this.tokens[pos];
-
-        // Handle boolean properties
+    private validatePropertyLine(currentBlockIndent: number): void {
+        const token = this.tokens[this.pos];
         if (token.type === TokenType.Property) {
-            return this.skipToNextLine(pos);
+            // Boolean property shortcut.
+            this.pos++; // Consume property token.
+            this.skipToNextLine();
+            return;
         }
-
-        // Handle regular properties
         if (token.type === TokenType.Identifier || token.type === TokenType.String) {
-            pos++;
-
-            // Skip whitespace
-            while (pos < this.tokens.length && 
-                   this.tokens[pos].type === TokenType.Whitespace) {
-                pos++;
+            this.pos++; // Consume property name.
+            this.skipWhitespace();
+            if (this.pos >= this.tokens.length) {
+                this.addError('Unexpected end of file after property name', token);
+                return;
             }
-
-            if (pos < this.tokens.length) {
-                const delimiter = this.tokens[pos];
-                if (delimiter.type === TokenType.Colon || 
-                    delimiter.type === TokenType.Equals) {
-                    pos++;
-
-                    // Skip whitespace after delimiter
-                    while (pos < this.tokens.length && 
-                           this.tokens[pos].type === TokenType.Whitespace) {
-                        pos++;
-                    }
-
-                    // Check for missing value
-                    if (pos >= this.tokens.length || 
-                        this.tokens[pos].type === TokenType.LineBreak) {
-                        this.addError('Expected property value', delimiter);
-                        return this.skipToNextLine(pos);
-                    }
-
-                    // For expressions, skip the rest of the block
-                    if (delimiter.type === TokenType.Equals) {
-                        return this.skipExpressionBlock(pos);
-                    }
+            const delimiter = this.tokens[this.pos];
+            if (delimiter.type === TokenType.Colon || delimiter.type === TokenType.Equals) {
+                this.pos++; // Consume delimiter.
+                this.skipWhitespace();
+                if (this.pos >= this.tokens.length || this.tokens[this.pos].type === TokenType.LineBreak) {
+                    this.addError('Expected property value', delimiter);
+                    this.skipToNextLine();
+                    return;
                 }
+                if (delimiter.type === TokenType.Equals) {
+                    // Multi-line expression: check if next line is indented at least one level deeper.
+                    const nextIndent = this.getCurrentLineIndent();
+                    if (nextIndent >= currentBlockIndent + this.config.indentSize) {
+                        this.validateBlock(currentBlockIndent + this.config.indentSize);
+                    } else {
+                        // Single-line expression.
+                        this.skipToNextLine();
+                    }
+                } else {
+                    // Colon-delimited property: value on same line.
+                    this.skipToNextLine();
+                }
+            } else {
+                this.addError('Expected : or = after property name', token);
+                this.skipToNextLine();
             }
+        } else {
+            this.addError('Expected property name or boolean property', token);
+            this.skipToNextLine();
         }
-
-        return this.skipToNextLine(pos);
     }
 
-    private skipExpressionBlock(pos: number): number {
-        const startIndent = this.getLineIndent(pos);
-        
-        while (pos < this.tokens.length) {
-            pos = this.skipToNextLine(pos);
-            
-            const lineIndent = this.getLineIndent(pos);
-            if (lineIndent <= startIndent && !this.isEmptyLine(pos)) {
-                break;
-            }
-        }
+    // Utility functions.
 
-        return pos;
-    }
-
-    private getLineIndent(pos: number): number {
-        if (pos >= this.tokens.length ||
-            this.tokens[pos].type !== TokenType.Whitespace) {
+    /**
+     * Determines the indentation of the current line by finding the first non-whitespace token on the line.
+     * If the line is empty or starts with a LineBreak, returns 0.
+     * Uses the token's column property (assumed 1-indexed) minus one.
+     */
+    private getCurrentLineIndent(): number {
+        let tempPos = this.pos;
+        // If current token is a LineBreak, indent is 0.
+        if (tempPos < this.tokens.length && this.tokens[tempPos].type === TokenType.LineBreak) {
             return 0;
         }
-        return this.tokens[pos].value.length;
+        // Skip over whitespace tokens on the current line.
+        while (tempPos < this.tokens.length && this.tokens[tempPos].type === TokenType.Whitespace) {
+            tempPos++;
+        }
+        if (tempPos < this.tokens.length) {
+            return this.tokens[tempPos].column - 1;
+        }
+        return 0;
     }
 
-    private isEmptyLine(pos: number): boolean {
+    private skipSkippable(): void {
+        while (
+            this.pos < this.tokens.length &&
+            (this.tokens[this.pos].type === TokenType.LineBreak ||
+             this.tokens[this.pos].type === TokenType.Comment ||
+             (this.tokens[this.pos].type === TokenType.Whitespace && this.isWhitespaceOnlyLine(this.pos)))
+        ) {
+            this.pos++;
+        }
+    }
+
+    private isWhitespaceOnlyLine(pos: number): boolean {
         let current = pos;
-        while (current < this.tokens.length && 
-               this.tokens[current].type !== TokenType.LineBreak) {
-            if (this.tokens[current].type !== TokenType.Whitespace && 
-                this.tokens[current].type !== TokenType.Comment) {
-                return false;
-            }
+        while (current < this.tokens.length && this.tokens[current].type === TokenType.Whitespace) {
             current++;
         }
-        return true;
+        return current >= this.tokens.length || this.tokens[current].type === TokenType.LineBreak;
     }
 
-    private findNextNonWhitespace(pos: number): Token | null {
-        let current = pos + 1;
-        while (current < this.tokens.length && 
-               this.tokens[current].type === TokenType.Whitespace) {
-            current++;
+    private skipWhitespace(): void {
+        while (this.pos < this.tokens.length && this.tokens[this.pos].type === TokenType.Whitespace) {
+            this.pos++;
         }
-        return current < this.tokens.length ? this.tokens[current] : null;
     }
 
-    private skipToNextLine(pos: number): number {
-        while (pos < this.tokens.length && 
-               this.tokens[pos].type !== TokenType.LineBreak) {
-            pos++;
+    private skipToNextLine(): void {
+        while (this.pos < this.tokens.length && this.tokens[this.pos].type !== TokenType.LineBreak) {
+            this.pos++;
         }
-        return Math.min(pos + 1, this.tokens.length);
+        if (this.pos < this.tokens.length) {
+            this.pos++; // Consume LineBreak.
+        }
     }
 
     private addError(message: string, token: Token): void {
-        this.diagnostics.push({
-            message,
-            severity: 'error',
-            line: token.line,
-            column: token.column,
-            length: token.length
-        });
+        if (!this.diagnostics.some(d => d.line === token.line && d.column === token.column && d.message === message)) {
+            this.diagnostics.push({
+                message,
+                severity: 'error',
+                line: token.line,
+                column: token.column,
+                length: token.length
+            });
+        }
     }
 }
