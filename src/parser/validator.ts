@@ -47,21 +47,34 @@ export class TmdlValidator {
         this.pos++; // Consume identifier.
 
         this.skipToNextLine();
-        this.skipSkippable(); // Skip any blank lines after declaration
         
-        // Check for block content
-        if (this.pos < this.tokens.length) {
-            const nextIndent = this.getCurrentLineIndent();
+        // Continue validating properties or nested declarations at the next level
+        while (this.pos < this.tokens.length) {
+            this.skipSkippable(); // Skip any blank lines after declaration
+            if (this.pos >= this.tokens.length) break;
+            
+            const currentIndent = this.getCurrentLineIndent();
+            
+            // If we've returned to a less indented level, we're done with this declaration
+            if (currentIndent < expectedIndent) {
+                return;
+            }
+            
+            // Check for content at the next indentation level
             const expectedNextIndent = expectedIndent + this.config.indentSize;
-            if (nextIndent === expectedNextIndent) {
+            if (currentIndent === expectedNextIndent) {
+                // We're at the correct indentation for properties or nested declarations
                 this.validateBlock(expectedNextIndent);
-            } else if (nextIndent > expectedIndent) {
+            } else if (currentIndent > expectedIndent) {
                 // Wrong indentation level
                 this.addError(
-                    `Invalid indentation: expected ${expectedNextIndent} spaces, got ${nextIndent}`,
+                    `Invalid indentation: expected ${expectedNextIndent} spaces, got ${currentIndent}`,
                     this.tokens[this.pos]
                 );
                 this.skipToNextLine();
+            } else {
+                // Done with this declaration
+                return;
             }
         }
     }
@@ -91,14 +104,14 @@ export class TmdlValidator {
             
             const token = this.tokens[this.pos];
             if (token.type === TokenType.Keyword) {
-                // Handle nested declarations with next indentation level
+                // Handle nested declarations with same indentation level
                 this.validateDeclaration(expectedIndent);
-            } else if (
-                token.type === TokenType.Identifier ||
-                token.type === TokenType.String ||
-                token.type === TokenType.Property
-            ) {
+            } else if (token.type === TokenType.Identifier || token.type === TokenType.String) {
                 this.validatePropertyLine(expectedIndent);
+            } else if (token.type === TokenType.Property) {
+                // Handle boolean property
+                this.pos++; // Consume property token
+                this.skipToNextLine();
             } else {
                 this.addError('Expected property, keyword, or identifier', token);
                 this.skipToNextLine();
@@ -108,47 +121,65 @@ export class TmdlValidator {
 
     private validatePropertyLine(currentBlockIndent: number): void {
         const token = this.tokens[this.pos];
-        if (token.type === TokenType.Property) {
-            // Boolean property shortcut.
-            this.pos++; // Consume property token.
-            this.skipToNextLine();
+        
+        this.pos++; // Consume property name
+        this.skipWhitespace();
+        
+        if (this.pos >= this.tokens.length) {
+            this.addError('Unexpected end of file after property name', token);
             return;
         }
-        if (token.type === TokenType.Identifier || token.type === TokenType.String) {
-            this.pos++; // Consume property name.
+        
+        const delimiter = this.tokens[this.pos];
+        if (delimiter.type === TokenType.Colon || delimiter.type === TokenType.Equals) {
+            this.pos++; // Consume delimiter
             this.skipWhitespace();
-            if (this.pos >= this.tokens.length) {
-                this.addError('Unexpected end of file after property name', token);
-                return;
-            }
-            const delimiter = this.tokens[this.pos];
-            if (delimiter.type === TokenType.Colon || delimiter.type === TokenType.Equals) {
-                this.pos++; // Consume delimiter.
-                this.skipWhitespace();
-                if (this.pos >= this.tokens.length || this.tokens[this.pos].type === TokenType.LineBreak) {
-                    this.addError('Expected property value', delimiter);
-                    this.skipToNextLine();
-                    return;
-                }
+            
+            if (this.pos >= this.tokens.length || this.tokens[this.pos].type === TokenType.LineBreak) {
                 if (delimiter.type === TokenType.Equals) {
-                    // Multi-line expression: check if next line is indented at least one level deeper.
-                    const nextIndent = this.getCurrentLineIndent();
-                    if (nextIndent >= currentBlockIndent + this.config.indentSize) {
-                        this.validateBlock(currentBlockIndent + this.config.indentSize);
-                    } else {
-                        // Single-line expression.
-                        this.skipToNextLine();
+                    // Empty expression is valid for equals
+                    this.skipToNextLine();
+                    // Check for multiline content
+                    this.skipSkippable();
+                    if (this.pos < this.tokens.length) {
+                        const nextIndent = this.getCurrentLineIndent();
+                        if (nextIndent > currentBlockIndent) {
+                            // Process the multiline expression
+                            this.validateBlock(nextIndent);
+                        }
                     }
                 } else {
-                    // Colon-delimited property: value on same line.
+                    // Missing value for colon-delimited property
+                    this.addError('Expected property value', delimiter);
                     this.skipToNextLine();
                 }
+                return;
+            }
+            
+            // Handle property value
+            if (delimiter.type === TokenType.Equals) {
+                // Check for single-line expression
+                const startPos = this.pos;
+                this.skipToNextLine();
+                
+                // If we had content after equals on same line
+                if (this.pos > startPos + 1) {
+                    // Check for possible multiline continuation
+                    this.skipSkippable();
+                    if (this.pos < this.tokens.length) {
+                        const nextIndent = this.getCurrentLineIndent();
+                        if (nextIndent > currentBlockIndent) {
+                            // Process the multiline expression
+                            this.validateBlock(nextIndent);
+                        }
+                    }
+                }
             } else {
-                this.addError('Expected : or = after property name', token);
+                // Colon-delimited property value
                 this.skipToNextLine();
             }
         } else {
-            this.addError('Expected property name or boolean property', token);
+            this.addError('Expected : or = after property name', token);
             this.skipToNextLine();
         }
     }
