@@ -31,6 +31,7 @@ flowchart TB
 ```
 
 #### 1.1 Tokenizer
+
 - Breaks TMDL content into basic tokens
 - Tracks indentation levels
 - Identifies key elements:
@@ -40,12 +41,14 @@ flowchart TB
   - String literals
 
 #### 1.2 Validator
+
 - Validates basic syntax rules
 - Checks structural consistency
 - Verifies indentation hierarchy
 - Ensures proper property formats
 
 #### 1.3 DiagnosticsProvider
+
 - Generates VS Code diagnostics
 - Provides clear error messages
 - Enables quick fixes where possible
@@ -90,6 +93,7 @@ interface ValidationRule {
 ## Implementation Plan
 
 ### Phase 1: Core Parser
+
 1. Implement basic tokenizer
    - Token types definition
    - Indentation tracking
@@ -101,6 +105,7 @@ interface ValidationRule {
    - Property format checking
 
 ### Phase 2: VS Code Integration
+
 1. Set up diagnostics provider
    - Convert parser errors to VS Code diagnostics
    - Show errors in Problems panel

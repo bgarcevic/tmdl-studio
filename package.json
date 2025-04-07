@@ -9,7 +9,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:tmdl"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -18,33 +20,33 @@
         "title": "Hello World"
       }
     ],
-		"languages": [
-			{
-			   "id": "tmdl",
-			   "aliases": [
-					"Tabular Model Definition Language",
-					"TMDL",
-					"tmdl"
-			   ],
-			   "extensions": [ ".tmdl", ".tmd" ],
-			   "configuration": "./config/tmdl-configuration.json"
-			}
-		 ],
-		 "grammars": [
-			{
-			  "language": "tmdl",
-			  "scopeName": "source.tmdl",
-			  "path": "./syntaxes/tmdl.tmLanguage.json"
-			}
-		]
+    "languages": [
+      {
+        "id": "tmdl",
+        "aliases": [
+          "Tabular Model Definition Language",
+          "TMDL",
+          "tmdl"
+        ],
+        "extensions": [ ".tmdl", ".tmd" ],
+        "configuration": "./config/tmdl-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "tmdl",
+        "scopeName": "source.tmdl",
+        "path": "./syntaxes/tmdl.tmLanguage.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "lint": "eslint src --ext .ts",
+    "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@types/vscode": "^1.99.0",
@@ -55,6 +57,7 @@
     "eslint": "^9.23.0",
     "typescript": "^5.8.2",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "mocha": "^10.2.0"
   }
 }
