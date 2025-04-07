@@ -17,7 +17,26 @@
         "command": "tmdl-studio.helloWorld",
         "title": "Hello World"
       }
-    ]
+    ],
+		"languages": [
+			{
+			   "id": "tmdl",
+			   "aliases": [
+					"Tabular Model Definition Language",
+					"TMDL",
+					"tmdl"
+			   ],
+			   "extensions": [ ".tmdl", ".tmd" ],
+			   "configuration": "./config/tmdl-configuration.json"
+			}
+		 ],
+		 "grammars": [
+			{
+			  "language": "tmdl",
+			  "scopeName": "source.tmdl",
+			  "path": "./syntaxes/tmdl.tmLanguage.json"
+			}
+		]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
