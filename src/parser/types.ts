@@ -78,6 +78,6 @@ export interface ParserConfig {
  * Default parser configuration
  */
 export const DEFAULT_CONFIG: ParserConfig = {
-    indentSize: 4,
-    maxLineLength: 120
+    indentSize: 2,
+    maxLineLength: 80
 };
