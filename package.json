@@ -9,9 +9,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onLanguage:tmdl"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
