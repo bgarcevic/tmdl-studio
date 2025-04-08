@@ -27,17 +27,6 @@ export interface Token {
 }
 
 /**
- * Represents a diagnostic message from the parser
- */
-export interface ParserDiagnostic {
-    message: string;
-    severity: 'error' | 'warning' | 'info';
-    line: number;
-    column: number;
-    length: number;
-}
-
-/**
  * TMDL language keywords
  */
 export const Keywords = [
