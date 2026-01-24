@@ -57,7 +57,7 @@
       "view/title": [
         {
           "command": "tmdl-studio.select-folder",
-          "when": "view == tabular-model-explorer && !tmdlModelOpen",
+          "when": "view == tabular-model-explorer && tmdlModelOpen",
           "group": "navigation"
         },
         {
