@@ -28,6 +28,7 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         if (savedFolder) {
             this.currentTmdlFolder = savedFolder;
             await this.loadModel();
+            await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', true);
         }
     }
 
@@ -39,6 +40,18 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         this.currentTmdlFolder = folderPath;
         await this.context.globalState.update('tmdlFolder', folderPath);
         await this.loadModel();
+        await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', true);
+        this.refresh();
+    }
+
+    /**
+     * Closes the currently open TMDL model.
+     */
+    async closeTmdlFolder(): Promise<void> {
+        this.currentTmdlFolder = undefined;
+        this.modelData = undefined;
+        await this.context.globalState.update('tmdlFolder', undefined);
+        await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', false);
         this.refresh();
     }
 

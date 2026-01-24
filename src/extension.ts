@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { TabularTreeProvider } from './views/explorer/TabularTreeProvider';
 import { ValidateCommand } from './commands/ValidateCommand';
+import { CloseModelCommand } from './commands/CloseModelCommand';
 
 /**
  * Activates the TMDL Studio extension.
@@ -28,9 +29,11 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     const validateCommand = ValidateCommand.register(context);
+    const closeModelCommand = CloseModelCommand.register(context, treeProvider);
 
     context.subscriptions.push(selectFolderCommand);
     context.subscriptions.push(validateCommand);
+    context.subscriptions.push(closeModelCommand);
 }
 
 /**

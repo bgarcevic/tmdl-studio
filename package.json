@@ -21,6 +21,11 @@
         "command": "tmdl-studio.select-folder",
         "title": "TMDL Studio: Select TMDL Folder",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "tmdl-studio.close-model",
+        "title": "TMDL Studio: Close Model",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -45,6 +50,11 @@
         {
           "command": "tmdl-studio.select-folder",
           "when": "view == tabular-model-explorer",
+          "group": "navigation"
+        },
+        {
+          "command": "tmdl-studio.close-model",
+          "when": "view == tabular-model-explorer && tmdlModelOpen == true",
           "group": "navigation"
         }
       ]
