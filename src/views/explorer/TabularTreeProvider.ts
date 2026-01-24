@@ -75,7 +75,11 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
 
         await this.context.globalState.update('tmdlFolder', projectRoot);
         await this.loadModel();
-        await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', true);
+
+        if (this.modelData) {
+            await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', true);
+        }
+
         this.refresh();
     }
 
