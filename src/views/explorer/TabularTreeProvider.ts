@@ -45,6 +45,14 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     /**
+     * Gets the current TMDL project root folder.
+     * @returns The current project root path, or undefined if none is set.
+     */
+    getCurrentFolder(): string | undefined {
+        return this.currentTmdlFolder;
+    }
+
+    /**
      * Sets the TMDL folder path and loads the model.
      * Detects the actual project root from the provided path.
      * @param folderPath - The file system path to the TMDL folder or file.
