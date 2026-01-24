@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import { TimdleClient } from '../../cli/TimdleClient';
 import { ModelStructure, TreeNode, createTreeItem } from './ModelTreeItem';
+import { ProjectRootDetector } from '../../utils/ProjectRootDetector';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Tree data provider for the Tabular Model Explorer view.
@@ -10,6 +13,7 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private currentTmdlFolder: string | undefined;
+    private currentDefinitionFolder: string | undefined;
     private modelData: ModelStructure | undefined;
     private cliClient: TimdleClient;
 
@@ -27,18 +31,67 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
         const savedFolder = this.context.globalState.get<string>('tmdlFolder');
         if (savedFolder) {
             this.currentTmdlFolder = savedFolder;
+
+            const definitionPath = path.join(savedFolder, 'definition');
+            if (fs.existsSync(definitionPath)) {
+                this.currentDefinitionFolder = definitionPath;
+            } else {
+                this.currentDefinitionFolder = savedFolder;
+            }
+
             await this.loadModel();
+            await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', true);
         }
     }
 
     /**
+     * Gets the current TMDL project root folder.
+     * @returns The current project root path, or undefined if none is set.
+     */
+    getCurrentFolder(): string | undefined {
+        return this.currentTmdlFolder;
+    }
+
+    /**
      * Sets the TMDL folder path and loads the model.
-     * @param folderPath - The file system path to the TMDL folder.
+     * Detects the actual project root from the provided path.
+     * @param folderPath - The file system path to the TMDL folder or file.
      */
     async setTmdlFolder(folderPath: string): Promise<void> {
-        this.currentTmdlFolder = folderPath;
-        await this.context.globalState.update('tmdlFolder', folderPath);
+        const projectRoot = ProjectRootDetector.detectProjectRoot(folderPath);
+
+        if (!projectRoot) {
+            throw new Error('Could not detect TMDL project root. Make sure the folder contains definition.pbism, .platform, or definition folder.');
+        }
+
+        this.currentTmdlFolder = projectRoot;
+
+        const definitionPath = path.join(projectRoot, 'definition');
+        if (fs.existsSync(definitionPath)) {
+            this.currentDefinitionFolder = definitionPath;
+        } else {
+            this.currentDefinitionFolder = projectRoot;
+        }
+
+        await this.context.globalState.update('tmdlFolder', projectRoot);
         await this.loadModel();
+
+        if (this.modelData) {
+            await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', true);
+        }
+
+        this.refresh();
+    }
+
+    /**
+     * Closes the currently open TMDL model.
+     */
+    async closeTmdlFolder(): Promise<void> {
+        this.currentTmdlFolder = undefined;
+        this.currentDefinitionFolder = undefined;
+        this.modelData = undefined;
+        await this.context.globalState.update('tmdlFolder', undefined);
+        await vscode.commands.executeCommand('setContext', 'tmdlModelOpen', false);
         this.refresh();
     }
 
@@ -55,7 +108,8 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
      * @returns The TreeItem for display.
      */
     getTreeItem(element: TreeNode): vscode.TreeItem {
-        return createTreeItem(element, this.currentTmdlFolder || '', this.modelData);
+        const folderPath = this.currentDefinitionFolder || this.currentTmdlFolder || '';
+        return createTreeItem(element, folderPath, this.modelData);
     }
 
     /**
@@ -77,7 +131,7 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
      */
     private async getRootChildren(): Promise<TreeNode[]> {
         if (!this.currentTmdlFolder) {
-            return [{ type: 'no-folder' }];
+            return [];
         }
 
         if (!this.modelData) {
@@ -138,10 +192,11 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
      * Loads the TMDL model structure from the current folder.
      */
     private async loadModel(): Promise<void> {
-        if (!this.currentTmdlFolder) {return;}
+        const tmdlPath = this.currentDefinitionFolder || this.currentTmdlFolder;
+        if (!tmdlPath) {return;}
 
         try {
-            this.modelData = await this.cliClient.getModelStructure(this.currentTmdlFolder);
+            this.modelData = await this.cliClient.getModelStructure(tmdlPath);
         } catch (error) {
             this.modelData = undefined;
             vscode.window.showErrorMessage(`Failed to load TMDL model: ${error}`);

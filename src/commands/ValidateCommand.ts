@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { TimdleClient } from '../cli/TimdleClient';
+import { ProjectRootDetector } from '../utils/ProjectRootDetector';
 
 /**
  * Command handler for validating TMDL models.
@@ -36,12 +37,19 @@ export class ValidateCommand {
         }
 
         const rootPath = workspaceFolders[0].uri.fsPath;
+        const projectRoot = ProjectRootDetector.detectProjectRoot(rootPath);
+
+        if (!projectRoot) {
+            vscode.window.showErrorMessage('Could not detect TMDL project root. Make sure the folder contains definition.pbism, .platform, or definition folder.');
+            return;
+        }
+
         const outputChannel = vscode.window.createOutputChannel('TMDL Studio');
         outputChannel.show();
-        outputChannel.appendLine(`Running validation on: ${rootPath}...`);
+        outputChannel.appendLine(`Running validation on: ${projectRoot}...`);
 
         try {
-            const output = await this.cliClient.validate(rootPath);
+            const output = await this.cliClient.validate(projectRoot);
             outputChannel.appendLine(output);
         } catch (error) {
             outputChannel.appendLine(`Error executing CLI: ${error}`);

@@ -19,8 +19,13 @@
       },
       {
         "command": "tmdl-studio.select-folder",
-        "title": "TMDL Studio: Select TMDL Folder",
+        "title": "TMDL Studio: Select TMDL Model",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "tmdl-studio.close-model",
+        "title": "TMDL Studio: Close Model",
+        "icon": "$(close)"
       }
     ],
     "viewsContainers": {
@@ -40,11 +45,24 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "tabular-model-explorer",
+        "when": "!tmdlModelOpen",
+        "contents": "No TMDL model is open.\n\n[Open TMDL Model](command:tmdl-studio.select-folder)",
+        "enablement": "true"
+      }
+    ],
     "menus": {
       "view/title": [
         {
           "command": "tmdl-studio.select-folder",
-          "when": "view == tabular-model-explorer",
+          "when": "view == tabular-model-explorer && tmdlModelOpen",
+          "group": "navigation"
+        },
+        {
+          "command": "tmdl-studio.close-model",
+          "when": "view == tabular-model-explorer && tmdlModelOpen",
           "group": "navigation"
         }
       ]

@@ -81,7 +81,6 @@ export interface CultureNode {
  * Union type for all possible tree nodes in the Tabular Explorer.
  */
 export type TreeNode =
-    | { type: 'no-folder' }
     | { type: 'loading' }
     | { type: 'error'; message: string }
     | { type: 'database'; data: DatabaseInfo }
@@ -141,7 +140,6 @@ export function createTreeItem(
  */
 function getLabel(element: TreeNode): string {
     switch (element.type) {
-        case 'no-folder': return 'No TMDL folder selected. Click the folder icon to select one.';
         case 'loading': return 'Loading model...';
         case 'error': return element.message;
         case 'database': return element.data.name;
@@ -171,7 +169,6 @@ function getLabel(element: TreeNode): string {
  */
 function getCollapsibleState(element: TreeNode): vscode.TreeItemCollapsibleState {
     switch (element.type) {
-        case 'no-folder':
         case 'loading':
         case 'error':
         case 'column':
