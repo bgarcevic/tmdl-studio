@@ -45,16 +45,24 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "tabular-model-explorer",
+        "when": "!tmdlModelOpen",
+        "contents": "No TMDL model is open.\n\n[Open TMDL Model](command:tmdl-studio.select-folder)",
+        "enablement": "true"
+      }
+    ],
     "menus": {
       "view/title": [
         {
           "command": "tmdl-studio.select-folder",
-          "when": "view == tabular-model-explorer",
+          "when": "view == tabular-model-explorer && !tmdlModelOpen",
           "group": "navigation"
         },
         {
           "command": "tmdl-studio.close-model",
-          "when": "view == tabular-model-explorer && tmdlModelOpen == true",
+          "when": "view == tabular-model-explorer && tmdlModelOpen",
           "group": "navigation"
         }
       ]

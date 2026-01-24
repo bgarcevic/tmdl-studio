@@ -81,7 +81,6 @@ export interface CultureNode {
  * Union type for all possible tree nodes in the Tabular Explorer.
  */
 export type TreeNode =
-    | { type: 'no-folder' }
     | { type: 'loading' }
     | { type: 'error'; message: string }
     | { type: 'database'; data: DatabaseInfo }
@@ -121,22 +120,14 @@ export function createTreeItem(
     item.iconPath = iconPath;
     item.contextValue = element.type;
 
-    if (element.type === 'no-folder') {
-        item.command = {
-            command: 'tmdl-studio.select-folder',
-            title: 'Select TMDL Model'
-        };
-        item.tooltip = 'Click to select a TMDL model folder or file';
-    } else {
-        const command = getOpenCommand(element, folderPath, modelData);
-        if (command) {
-            item.command = command;
-        }
+    const command = getOpenCommand(element, folderPath, modelData);
+    if (command) {
+        item.command = command;
+    }
 
-        const tooltip = getTooltip(element);
-        if (tooltip) {
-            item.tooltip = tooltip;
-        }
+    const tooltip = getTooltip(element);
+    if (tooltip) {
+        item.tooltip = tooltip;
     }
 
     return item;
@@ -149,7 +140,6 @@ export function createTreeItem(
  */
 function getLabel(element: TreeNode): string {
     switch (element.type) {
-        case 'no-folder': return 'Open TMDL Model';
         case 'loading': return 'Loading model...';
         case 'error': return element.message;
         case 'database': return element.data.name;
@@ -179,7 +169,6 @@ function getLabel(element: TreeNode): string {
  */
 function getCollapsibleState(element: TreeNode): vscode.TreeItemCollapsibleState {
     switch (element.type) {
-        case 'no-folder':
         case 'loading':
         case 'error':
         case 'column':
@@ -201,7 +190,6 @@ function getCollapsibleState(element: TreeNode): vscode.TreeItemCollapsibleState
  */
 function getIcon(type: string): vscode.ThemeIcon {
     switch (type) {
-        case 'no-folder': return new vscode.ThemeIcon('folder-opened');
         case 'database': return new vscode.ThemeIcon('database');
         case 'model': return new vscode.ThemeIcon('symbol-namespace');
         case 'tables': return new vscode.ThemeIcon('folder');

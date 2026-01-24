@@ -127,7 +127,7 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
      */
     private async getRootChildren(): Promise<TreeNode[]> {
         if (!this.currentTmdlFolder) {
-            return [{ type: 'no-folder' }];
+            return [];
         }
 
         if (!this.modelData) {
