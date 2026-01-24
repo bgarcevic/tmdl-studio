@@ -14,10 +14,41 @@
   "contributes": {
     "commands": [
       {
-        "command": "tmdl-studio.helloWorld",
-        "title": "Hello World"
+        "command": "tmdl-studio.validate",
+        "title": "TMDL Studio: Validate Model"
+      },
+      {
+        "command": "tmdl-studio.select-folder",
+        "title": "TMDL Studio: Select TMDL Folder",
+        "icon": "$(folder-opened)"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tmdl-explorer",
+          "title": "TMDL Explorer",
+          "icon": "$(database)"
+        }
+      ]
+    },
+    "views": {
+      "tmdl-explorer": [
+        {
+          "id": "tabular-model-explorer",
+          "name": "Tabular Model"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "tmdl-studio.select-folder",
+          "when": "view == tabular-model-explorer",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -28,14 +59,14 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.99.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.99.0",
     "@typescript-eslint/eslint-plugin": "^8.28.0",
     "@typescript-eslint/parser": "^8.28.0",
-    "eslint": "^9.23.0",
-    "typescript": "^5.8.2",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.23.0",
+    "typescript": "^5.8.3"
   }
 }
