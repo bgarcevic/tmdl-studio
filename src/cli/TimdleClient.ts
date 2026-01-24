@@ -42,7 +42,9 @@ export class TimdleClient {
      */
     async getModelStructure(tmdlPath: string): Promise<ModelStructure> {
         return new Promise((resolve, reject) => {
-            cp.exec(`"${this.cliPath}" get-model-structure "${tmdlPath}"`, (err, stdout, stderr) => {
+            const command = `"${this.cliPath}" get-model-structure "${tmdlPath}"`;
+
+            cp.exec(command, (err, stdout, stderr) => {
                 if (err) {
                     reject(err);
                     return;

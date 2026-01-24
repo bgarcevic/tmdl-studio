@@ -19,7 +19,7 @@
       },
       {
         "command": "tmdl-studio.select-folder",
-        "title": "TMDL Studio: Select TMDL Folder",
+        "title": "TMDL Studio: Select TMDL Model",
         "icon": "$(folder-opened)"
       },
       {

@@ -16,15 +16,20 @@ export function activate(context: vscode.ExtensionContext) {
     treeProvider.loadState();
 
     const selectFolderCommand = vscode.commands.registerCommand('tmdl-studio.select-folder', async () => {
-        const folderUri = await vscode.window.showOpenDialog({
+        const uri = await vscode.window.showOpenDialog({
             canSelectFolders: true,
-            canSelectFiles: false,
+            canSelectFiles: true,
             canSelectMany: false,
-            title: 'Select TMDL Model Folder'
+            title: 'Select TMDL Model Folder or File'
         });
 
-        if (folderUri && folderUri[0]) {
-            await treeProvider.setTmdlFolder(folderUri[0].fsPath);
+        if (uri && uri[0]) {
+            const path = uri[0].fsPath;
+            try {
+                await treeProvider.setTmdlFolder(path);
+            } catch (error) {
+                vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
+            }
         }
     });
 
