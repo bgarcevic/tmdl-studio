@@ -121,14 +121,22 @@ export function createTreeItem(
     item.iconPath = iconPath;
     item.contextValue = element.type;
 
-    const command = getOpenCommand(element, folderPath, modelData);
-    if (command) {
-        item.command = command;
-    }
+    if (element.type === 'no-folder') {
+        item.command = {
+            command: 'tmdl-studio.select-folder',
+            title: 'Select TMDL Model'
+        };
+        item.tooltip = 'Click to select a TMDL model folder or file';
+    } else {
+        const command = getOpenCommand(element, folderPath, modelData);
+        if (command) {
+            item.command = command;
+        }
 
-    const tooltip = getTooltip(element);
-    if (tooltip) {
-        item.tooltip = tooltip;
+        const tooltip = getTooltip(element);
+        if (tooltip) {
+            item.tooltip = tooltip;
+        }
     }
 
     return item;
@@ -141,7 +149,7 @@ export function createTreeItem(
  */
 function getLabel(element: TreeNode): string {
     switch (element.type) {
-        case 'no-folder': return 'No TMDL folder selected. Click the folder icon to select one.';
+        case 'no-folder': return 'Open TMDL Model';
         case 'loading': return 'Loading model...';
         case 'error': return element.message;
         case 'database': return element.data.name;
@@ -193,6 +201,7 @@ function getCollapsibleState(element: TreeNode): vscode.TreeItemCollapsibleState
  */
 function getIcon(type: string): vscode.ThemeIcon {
     switch (type) {
+        case 'no-folder': return new vscode.ThemeIcon('folder-opened');
         case 'database': return new vscode.ThemeIcon('database');
         case 'model': return new vscode.ThemeIcon('symbol-namespace');
         case 'tables': return new vscode.ThemeIcon('folder');
