@@ -132,12 +132,29 @@ namespace TmdlStudio.Services
         {
             try
             {
+                if (!Directory.Exists(path))
+                {
+                    return TmdlStudio.Models.ValidationResult.Error($"Path does not exist: {path}");
+                }
+
+                var tmdlFiles = Directory.GetFiles(path, "*.tmdl", SearchOption.AllDirectories);
+                if (tmdlFiles.Length == 0)
+                {
+                    return TmdlStudio.Models.ValidationResult.Error($"No TMDL files found in: {path}");
+                }
+
                 var model = LoadModelObject(path);
-                return TmdlStudio.Models.ValidationResult.Success($"Model '{model.Name}' loaded. Tables: {model.Tables.Count}");
+
+                if (model.Tables.Count == 0)
+                {
+                    return TmdlStudio.Models.ValidationResult.Warning($"Model '{model.Name}' loaded but contains no tables");
+                }
+
+                return TmdlStudio.Models.ValidationResult.Success($"Model '{model.Name}' validated. Tables: {model.Tables.Count}, Measures: {model.Tables.Sum(t => t.Measures.Count)}");
             }
             catch (Exception ex)
             {
-                return TmdlStudio.Models.ValidationResult.Error(ex.Message);
+                return TmdlStudio.Models.ValidationResult.Error($"Validation failed: {ex.Message}");
             }
         }
     }

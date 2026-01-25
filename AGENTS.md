@@ -118,6 +118,7 @@ This codebase follows the Service Pattern to cleanly separate concerns:
   - Entry point for extension activation/deactivation
 
 **Key Principles:**
+
 - Isolate "messy" parts (CLI calls, parsing) from UI parts
 - UI components should use service classes, not call CLI directly
 - Commands are self-contained with their own service dependencies
@@ -148,6 +149,7 @@ This codebase follows the Service Pattern to cleanly separate concerns:
   - No business logic
 
 **Key Principles:**
+
 - TOM interop centralized in `Services/TmdlService.cs`
 - DTOs provide type-safe JSON serialization
 - Commands are thin wrappers around service methods
@@ -237,3 +239,9 @@ timdle-core/
 - DTOs in `Models/` provide type-safe JSON contracts
 - Commands are thin wrappers around service methods
 - Entry point (`Program.cs`) acts as minimal switchboard
+
+## Success Metrics
+
+- **Feature Parity:** All core features work identically on Apple Silicon (M1/M2/M3) and Windows.
+- **Performance:** CLI execution overhead stays under 100ms for metadata discovery.
+- **Adoption:** Successful deployment to a Fabric workspace without using Power BI Desktop.
