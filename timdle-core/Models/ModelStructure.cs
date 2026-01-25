@@ -51,18 +51,21 @@ namespace TmdlStudio.Models
         public string Name { get; set; }
         public string DataType { get; set; }
         public bool IsHidden { get; set; }
+        public int? LineNumber { get; set; }
     }
 
     public class MeasureInfo
     {
         public string Name { get; set; }
         public string FormatString { get; set; }
+        public int? LineNumber { get; set; }
     }
 
     public class PartitionInfo
     {
         public string Name { get; set; }
         public string Mode { get; set; }
+        public int? LineNumber { get; set; }
     }
 
     public class RelationshipInfo
@@ -72,6 +75,7 @@ namespace TmdlStudio.Models
         public string File { get; set; }
         public string FromColumn { get; set; }
         public string ToColumn { get; set; }
+        public int? LineNumber { get; set; }
     }
 
     public class ExpressionInfo
@@ -79,11 +83,13 @@ namespace TmdlStudio.Models
         public string Name { get; set; }
         public string File { get; set; }
         public string Kind { get; set; }
+        public int? LineNumber { get; set; }
     }
 
     public class CultureInfo
     {
         public string Name { get; set; }
         public string File { get; set; }
+        public int? LineNumber { get; set; }
     }
 }

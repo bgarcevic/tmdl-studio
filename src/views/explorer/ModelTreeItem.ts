@@ -41,18 +41,21 @@ export interface ColumnNode {
     name: string;
     dataType?: string;
     isHidden?: boolean;
+    lineNumber?: number;
 }
 
 /** Measure node with format string. */
 export interface MeasureNode {
     name: string;
     formatString?: string;
+    lineNumber?: number;
 }
 
 /** Partition node with processing mode. */
 export interface PartitionNode {
     name: string;
     mode?: string;
+    lineNumber?: number;
 }
 
 /** Relationship node between tables. */
@@ -62,6 +65,7 @@ export interface RelationshipNode {
     file: string;
     fromColumn: string;
     toColumn: string;
+    lineNumber?: number;
 }
 
 /** Expression node (calculation items, M expressions, etc.). */
@@ -69,12 +73,14 @@ export interface ExpressionNode {
     name: string;
     file: string;
     kind: string;
+    lineNumber?: number;
 }
 
 /** Culture/translation node. */
 export interface CultureNode {
     name: string;
     file: string;
+    lineNumber?: number;
 }
 
 /**
@@ -233,7 +239,7 @@ function getTooltip(element: TreeNode): string | undefined {
 }
 
 /**
- * Gets the command to open the associated file for a tree node.
+ * Gets command to open associated file for a tree node.
  * @param element - The tree node.
  * @param folderPath - The TMDL folder path.
  * @param modelData - The model structure data.
@@ -245,6 +251,7 @@ function getOpenCommand(
     modelData: ModelStructure | undefined
 ): vscode.Command | undefined {
     let relativePath: string | undefined;
+    let lineNumber: number | undefined;
 
     switch (element.type) {
         case 'database':
@@ -261,16 +268,20 @@ function getOpenCommand(
         case 'partition': {
             const table = modelData?.tables.find(t => t.name === element.parentTable);
             relativePath = table?.file;
+            lineNumber = element.data.lineNumber;
             break;
         }
         case 'relationship':
             relativePath = element.data.file;
+            lineNumber = element.data.lineNumber;
             break;
         case 'expression':
             relativePath = element.data.file;
+            lineNumber = element.data.lineNumber;
             break;
         case 'culture':
             relativePath = element.data.file;
+            lineNumber = element.data.lineNumber;
             break;
     }
 
@@ -279,9 +290,11 @@ function getOpenCommand(
     const fullPath = path.join(folderPath, relativePath);
     const uri = vscode.Uri.file(fullPath);
 
-    return {
-        command: 'vscode.open',
-        arguments: [uri],
+    const command: vscode.Command = {
+        command: 'tmdl-studio.open-file-at-line',
+        arguments: [fullPath, lineNumber],
         title: 'Open File'
     };
+
+    return command;
 }

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using Microsoft.AnalysisServices.Tabular;
 using Microsoft.AnalysisServices.Tabular.Tmdl;
@@ -22,7 +23,7 @@ namespace TmdlStudio.Services
         public static ModelStructure ToModelStructure(Database database, string path)
         {
             var model = database.Model;
-
+ 
             return new ModelStructure
             {
                 Name = database.Name,
@@ -37,20 +38,17 @@ namespace TmdlStudio.Services
                     Name = model.Name,
                     File = "model.tmdl"
                 },
-                Tables = model.Tables.Select(ToTableInfo).ToArray(),
-                Relationships = model.Relationships.Select(ToRelationshipInfo).ToArray(),
-                Expressions = model.Expressions.Select(e => new ExpressionInfo
-                {
-                    Name = e.Name,
-                    File = "expressions.tmdl",
-                    Kind = e.Kind.ToString()
-                }).ToArray(),
-                Cultures = model.Cultures.Select(ToCultureInfo).ToArray()
+                Tables = model.Tables.Select(t => ToTableInfo(t, path)).ToArray(),
+                Relationships = model.Relationships.Select(r => ToRelationshipInfo(r, path)).ToArray(),
+                Expressions = model.Expressions.Select(e => ToExpressionInfo(e, path)).ToArray(),
+                Cultures = model.Cultures.Select(c => ToCultureInfo(c, path)).ToArray()
             };
         }
 
-        private static TableInfo ToTableInfo(Table table)
+        private static TableInfo ToTableInfo(Table table, string basePath)
         {
+            var tableFilePath = Path.Combine(basePath, $"tables/{table.Name}.tmdl");
+
             return new TableInfo
             {
                 Name = table.Name,
@@ -59,30 +57,36 @@ namespace TmdlStudio.Services
                 {
                     Name = c.Name,
                     DataType = c.DataType.ToString(),
-                    IsHidden = c.IsHidden
+                    IsHidden = c.IsHidden,
+                    LineNumber = LineNumberFinder.FindLineNumber(tableFilePath, c.Name, "column")
                 }).ToArray(),
                 Measures = table.Measures.Select(m => new MeasureInfo
                 {
                     Name = m.Name,
-                    FormatString = m.FormatString
+                    FormatString = m.FormatString,
+                    LineNumber = LineNumberFinder.FindLineNumber(tableFilePath, m.Name, "measure")
                 }).ToArray(),
                 Partitions = table.Partitions.Select(p => new PartitionInfo
                 {
                     Name = p.Name,
-                    Mode = p.Mode.ToString()
+                    Mode = p.Mode.ToString(),
+                    LineNumber = LineNumberFinder.FindLineNumber(tableFilePath, p.Name, "partition")
                 }).ToArray()
             };
         }
 
-        private static RelationshipInfo ToRelationshipInfo(Relationship relationship)
+        private static RelationshipInfo ToRelationshipInfo(Relationship relationship, string basePath)
         {
+            var relationshipsFilePath = Path.Combine(basePath, "relationships.tmdl");
+            
             return new RelationshipInfo
             {
                 Id = relationship.Name ?? string.Empty,
                 Name = GenerateRelationshipName(relationship),
                 File = "relationships.tmdl",
                 FromColumn = relationship.FromTable?.Name,
-                ToColumn = relationship.ToTable?.Name
+                ToColumn = relationship.ToTable?.Name,
+                LineNumber = LineNumberFinder.FindLineNumber(relationshipsFilePath, relationship.Name, "relationship")
             };
         }
 
@@ -93,12 +97,28 @@ namespace TmdlStudio.Services
             return $"{fromTable} → {toTable}";
         }
 
-        private static CultureInfo ToCultureInfo(Culture culture)
+        private static ExpressionInfo ToExpressionInfo(NamedExpression expression, string basePath)
         {
+            var expressionsFilePath = Path.Combine(basePath, "expressions.tmdl");
+            
+            return new ExpressionInfo
+            {
+                Name = expression.Name,
+                File = "expressions.tmdl",
+                Kind = expression.Kind.ToString(),
+                LineNumber = LineNumberFinder.FindLineNumber(expressionsFilePath, expression.Name, "expression")
+            };
+        }
+
+        private static CultureInfo ToCultureInfo(Culture culture, string basePath)
+        {
+            var cultureFilePath = Path.Combine(basePath, $"cultures/{culture.Name}.tmdl");
+
             return new CultureInfo
             {
                 Name = culture.Name,
-                File = $"cultures/{culture.Name}.tmdl"
+                File = $"cultures/{culture.Name}.tmdl",
+                LineNumber = LineNumberFinder.FindLineNumber(cultureFilePath, culture.Name, "cultureInfo")
             };
         }
 
