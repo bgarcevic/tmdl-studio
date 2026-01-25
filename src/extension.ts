@@ -3,6 +3,8 @@ import * as path from 'path';
 import { TabularTreeProvider } from './views/explorer/TabularTreeProvider';
 import { ValidateCommand } from './commands/ValidateCommand';
 import { CloseModelCommand } from './commands/CloseModelCommand';
+import { SelectFolderCommand } from './commands/SelectFolderCommand';
+import { OpenFileAtLineCommand } from './commands/OpenFileAtLineCommand';
 import { ProjectRootDetector } from './utils/ProjectRootDetector';
 
 /**
@@ -17,26 +19,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     treeProvider.loadState();
 
-    const selectFolderCommand = vscode.commands.registerCommand('tmdl-studio.select-folder', async () => {
-        const uri = await vscode.window.showOpenDialog({
-            canSelectFolders: true,
-            canSelectFiles: true,
-            canSelectMany: false,
-            title: 'Select TMDL Model Folder or File'
-        });
-
-        if (uri && uri[0]) {
-            const path = uri[0].fsPath;
-            try {
-                await treeProvider.setTmdlFolder(path);
-            } catch (error) {
-                vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
-            }
-        }
-    });
-
+    const selectFolderCommand = SelectFolderCommand.register(context, treeProvider);
     const validateCommand = ValidateCommand.register(context);
     const closeModelCommand = CloseModelCommand.register(context, treeProvider);
+    const openFileAtLineCommand = OpenFileAtLineCommand.register();
 
     const openedFiles = new Set<string>();
 
@@ -83,6 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(selectFolderCommand);
     context.subscriptions.push(validateCommand);
     context.subscriptions.push(closeModelCommand);
+    context.subscriptions.push(openFileAtLineCommand);
     context.subscriptions.push(fileOpenListener);
 }
 
