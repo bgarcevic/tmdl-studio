@@ -96,6 +96,14 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     /**
+     * Reloads the model data from disk and refreshes the tree view.
+     */
+    async reload(): Promise<void> {
+        await this.loadModel();
+        this.refresh();
+    }
+
+    /**
      * Refreshes the tree view.
      */
     refresh(): void {

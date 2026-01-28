@@ -1,20 +1,46 @@
 using System;
+using System.CommandLine;
+using System.Reflection;
 using TmdlStudio.Commands;
 
 class Program
 {
-    static void Main(string[] args)
+    static int Main(string[] args)
     {
-        if (args.Length < 2)
+        var rootCommand = new RootCommand
         {
-            Console.WriteLine("timdle CLI");
-            Console.WriteLine("Error: Invalid arguments. Usage: <command> <path>");
-            return;
-        }
+            Description = "TMDL Studio CLI - Validate and explore Tabular models in TMDL format",
+            Name = "timdle"
+        };
 
-        string command = args[0];
-        string path = args[1];
+        var version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.9.0";
 
-        CommandRouter.Route(command, path);
+        var pathArgument = new Argument<string>("path", getDefaultValue: () => Environment.CurrentDirectory)
+        {
+            Description = "Path to the TMDL model folder (defaults to current directory if not provided)"
+        };
+
+        var validateCommand = new Command("validate", "Validate a TMDL model")
+        {
+            pathArgument
+        };
+        validateCommand.SetHandler(ValidateCommand.Execute, pathArgument);
+        rootCommand.AddCommand(validateCommand);
+
+        var modelStructureCommand = new Command("get-model-structure", "Get the complete model structure as JSON")
+        {
+            pathArgument
+        };
+        modelStructureCommand.SetHandler(GetModelStructureCommand.Execute, pathArgument);
+        rootCommand.AddCommand(modelStructureCommand);
+
+        var listTablesCommand = new Command("list-tables", "List all tables in the TMDL model")
+        {
+            pathArgument
+        };
+        listTablesCommand.SetHandler(GetTablesCommand.Execute, pathArgument);
+        rootCommand.AddCommand(listTablesCommand);
+
+        return rootCommand.Invoke(args);
     }
 }
