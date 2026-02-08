@@ -49,8 +49,7 @@ namespace TmdlStudio.Commands
                     return;
                 }
 
-                // Acquire access token for service principal modes
-                // For interactive mode, token should already be provided by the TypeScript extension
+                // Acquire access token based on authentication mode
                 if (authConfig.IsServicePrincipal)
                 {
                     try
@@ -66,6 +65,22 @@ namespace TmdlStudio.Commands
                     catch (Exception ex)
                     {
                         var errorResult = DeployResult.Error($"Failed to acquire access token: {ex.Message}");
+                        OutputResult(errorResult);
+                        return;
+                    }
+                }
+                else if (authConfig.Mode?.ToLower() == "interactive" && string.IsNullOrEmpty(authConfig.AccessToken))
+                {
+                    // CLI interactive mode - acquire token via device code flow
+                    try
+                    {
+                        Console.WriteLine("Starting interactive authentication...");
+                        authConfig.AccessToken = await TokenService.AcquireTokenByDeviceCodeAsync();
+                        Console.WriteLine("Authentication successful.");
+                    }
+                    catch (Exception ex)
+                    {
+                        var errorResult = DeployResult.Error($"Failed to authenticate: {ex.Message}");
                         OutputResult(errorResult);
                         return;
                     }
@@ -97,14 +112,11 @@ namespace TmdlStudio.Commands
                 return false;
             }
 
-            if (authConfig.IsInteractive)
+            if (authConfig.Mode?.ToLower() == "interactive")
             {
-                // Token-based auth - access token is required
-                if (string.IsNullOrEmpty(authConfig.AccessToken))
-                {
-                    errorMessage = "Access token is required for interactive authentication";
-                    return false;
-                }
+                // Interactive mode - CLI will acquire token via device code flow
+                // No credentials required upfront, user will authenticate via browser
+                return true;
             }
             else if (authConfig.IsServicePrincipal)
             {

@@ -36,9 +36,11 @@ namespace TmdlStudio.Models
         public string TenantId { get; set; }
 
         /// <summary>
-        /// Checks if this is an interactive (token-based) authentication.
+        /// Checks if this is an interactive authentication.
+        /// For CLI usage, token will be acquired via device code flow.
+        /// For VS Code extension usage, token is pre-acquired and passed in.
         /// </summary>
-        public bool IsInteractive => Mode?.ToLower() == "interactive" && !string.IsNullOrEmpty(AccessToken);
+        public bool IsInteractive => Mode?.ToLower() == "interactive";
 
         /// <summary>
         /// Checks if this is service principal authentication.
