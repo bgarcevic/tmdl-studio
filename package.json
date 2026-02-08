@@ -9,6 +9,9 @@
   "categories": [
     "Other"
   ],
+  "extensionDependencies": [
+    "analysis-services.TMDL"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
@@ -26,6 +29,11 @@
         "command": "tmdl-studio.close-model",
         "title": "TMDL Studio: Close Model",
         "icon": "$(close)"
+      },
+      {
+        "command": "tmdl-studio.deploy",
+        "title": "TMDL Studio: Deploy to Workspace",
+        "icon": "$(cloud-upload)"
       }
     ],
     "viewsContainers": {
@@ -64,6 +72,11 @@
           "command": "tmdl-studio.close-model",
           "when": "view == tabular-model-explorer && tmdlModelOpen",
           "group": "navigation"
+        },
+        {
+          "command": "tmdl-studio.deploy",
+          "when": "view == tabular-model-explorer && tmdlModelOpen",
+          "group": "navigation"
         }
       ]
     }
@@ -86,5 +99,8 @@
     "@vscode/test-electron": "^2.4.1",
     "eslint": "^9.23.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@azure/msal-node": "^5.0.3"
   }
 }

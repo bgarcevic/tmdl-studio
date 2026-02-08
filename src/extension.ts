@@ -4,6 +4,7 @@ import { ValidateCommand } from './commands/ValidateCommand';
 import { CloseModelCommand } from './commands/CloseModelCommand';
 import { SelectFolderCommand } from './commands/SelectFolderCommand';
 import { OpenFileAtLineCommand } from './commands/OpenFileAtLineCommand';
+import { DeployCommand } from './commands/DeployCommand';
 import { FileOpenListener } from './listeners/FileOpenListener';
 import { FileSaveListener } from './listeners/FileSaveListener';
 
@@ -21,6 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const selectFolderCommand = SelectFolderCommand.register(context, treeProvider);
     const validateCommand = ValidateCommand.register(context);
+    const deployCommand = DeployCommand.register(context, treeProvider);
     const closeModelCommand = CloseModelCommand.register(context, treeProvider);
     const openFileAtLineCommand = OpenFileAtLineCommand.register();
     const fileOpenListener = FileOpenListener.register(context, treeProvider);
@@ -28,6 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(selectFolderCommand);
     context.subscriptions.push(validateCommand);
+    context.subscriptions.push(deployCommand);
     context.subscriptions.push(closeModelCommand);
     context.subscriptions.push(openFileAtLineCommand);
     context.subscriptions.push(fileOpenListener);

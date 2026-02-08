@@ -9,6 +9,65 @@ namespace TmdlStudio.Services
 {
     public static class TmdlService
     {
+        /// <summary>
+        /// Deploys the TMDL model to the specified workspace.
+        /// Uses Microsoft Fabric REST API for cross-platform compatibility (Windows, macOS, Linux).
+        /// </summary>
+        /// <param name="path">Path to the TMDL folder.</param>
+        /// <param name="authConfig">Authentication configuration.</param>
+        /// <returns>Deploy result with success status and change summary.</returns>
+        public static DeployResult Deploy(string path, AuthConfig authConfig)
+        {
+            // Use Fabric REST API for deployment
+            // This works cross-platform without requiring Windows-only components
+            return FabricApiService.DeployAsync(path, authConfig).GetAwaiter().GetResult();
+        }
+
+        private static System.Collections.Generic.List<DeployChange> CalculateChanges(Database newDb, Database existingDb)
+        {
+            var changes = new System.Collections.Generic.List<DeployChange>();
+            
+            // Compare tables
+            foreach (var table in newDb.Model.Tables)
+            {
+                var existingTable = existingDb.Model.Tables.Find(table.Name);
+                if (existingTable == null)
+                {
+                    changes.Add(new DeployChange
+                    {
+                        ObjectType = "Table",
+                        ObjectName = table.Name,
+                        ChangeType = "Added"
+                    });
+                }
+                else
+                {
+                    // Check for modifications (simplified)
+                    changes.Add(new DeployChange
+                    {
+                        ObjectType = "Table",
+                        ObjectName = table.Name,
+                        ChangeType = "Modified"
+                    });
+                }
+            }
+
+            // Track removed tables
+            foreach (var existingTable in existingDb.Model.Tables)
+            {
+                if (newDb.Model.Tables.Find(existingTable.Name) == null)
+                {
+                    changes.Add(new DeployChange
+                    {
+                        ObjectType = "Table",
+                        ObjectName = existingTable.Name,
+                        ChangeType = "Removed"
+                    });
+                }
+            }
+
+            return changes;
+        }
         public static Database LoadModel(string path)
         {
             var database = TmdlSerializer.DeserializeDatabaseFromFolder(path);

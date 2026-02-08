@@ -47,9 +47,9 @@ export class FileOpenListener {
                 'No'
             );
 
-            if (response === 'Yes') {
+            if (response === 'Yes' && projectRoot) {
                 try {
-                    await treeProvider.setTmdlFolder(filePath);
+                    await treeProvider.setTmdlFolder(projectRoot);
                 } catch (error) {
                     vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
                 }
