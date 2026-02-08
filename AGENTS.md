@@ -240,6 +240,32 @@ timdle-core/
 - Commands are thin wrappers around service methods
 - Entry point (`Program.cs`) acts as minimal switchboard
 
+### CLI Independence
+
+**The C# CLI tool (timdle-core) MUST be able to run with all its core features without the VS Code frontend.**
+
+This is a fundamental architectural requirement:
+
+- **No VS Code dependency**: The CLI should be fully functional when invoked directly from any terminal
+- **Authentication**: All auth modes (interactive, service principal, environment variables) must work via CLI command line or environment variables
+- **Input/Output**: CLI communicates via stdin/stdout/stderr with JSON output, not VS Code APIs
+- **Configuration**: CLI reads config from environment variables and command-line arguments
+- **Standalone deployment**: Users should be able to deploy TMDL models to Fabric from CI/CD pipelines without VS Code installed
+
+**Example standalone usage:**
+
+```bash
+# Interactive authentication (device code flow)
+export TMDL_AUTH_CONFIG='{"mode":"interactive","workspaceUrl":"https://..."}'
+./timdle deploy /path/to/tmdl
+
+# Service principal (CI/CD)
+export TMDL_AUTH_CONFIG='{"mode":"service-principal","clientId":"...","clientSecret":"...","tenantId":"...","workspaceUrl":"..."}'
+./timdle deploy /path/to/tmdl
+```
+
+The VS Code extension is a thin wrapper around the CLI - the CLI contains all business logic.
+
 ## Success Metrics
 
 - **Feature Parity:** All core features work identically on Apple Silicon (M1/M2/M3) and Windows.
