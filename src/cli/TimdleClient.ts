@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { PathUtils } from './PathUtils';
 import { ModelStructure } from '../views/explorer/ModelTreeItem';
+import { AuthConfig } from '../types/auth';
 
 /**
  * Client service for interacting with the TMDL CLI (timdle).
@@ -76,4 +77,57 @@ export class TimdleClient {
             });
         });
     }
+
+    /**
+     * Deploys the TMDL model to the specified workspace.
+     * @param tmdlPath - The file system path to the TMDL folder.
+     * @param authConfig - Authentication configuration including workspace URL and credentials.
+     * @returns A promise that resolves to the deploy result.
+     */
+    async deploy(tmdlPath: string, authConfig: AuthConfig): Promise<DeployResult> {
+        return new Promise((resolve, reject) => {
+            // Pass auth config via environment variables to avoid exposing credentials in command line
+            const authJson = JSON.stringify(authConfig);
+            const env = {
+                ...process.env,
+                TMDL_AUTH_CONFIG: authJson
+            };
+            const command = `"${this.cliPath}" deploy "${tmdlPath}"`;
+
+            cp.exec(command, { env }, (err, stdout, stderr) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                try {
+                    const result = JSON.parse(stdout) as DeployResult;
+                    resolve(result);
+                } catch (parseError) {
+                    reject(parseError);
+                }
+            });
+        });
+    }
 }
+
+/**
+ * Result of a deployment operation.
+ */
+export interface DeployResult {
+    isSuccess: boolean;
+    message: string;
+    changes: DeployChange[];
+}
+
+/**
+ * Individual change in a deployment.
+ */
+export interface DeployChange {
+    objectType: string;
+    objectName: string;
+    changeType: string;
+}
+
+// Re-export auth types for convenience
+export { AuthConfig, AuthMode, ServicePrincipalCredentials } from '../types/auth';

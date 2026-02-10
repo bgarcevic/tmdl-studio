@@ -30,13 +30,22 @@ export class TabularTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     async loadState(): Promise<void> {
         const savedFolder = this.context.globalState.get<string>('tmdlFolder');
         if (savedFolder) {
-            this.currentTmdlFolder = savedFolder;
+            // Re-detect the correct project root from the saved path
+            const projectRoot = ProjectRootDetector.detectProjectRoot(savedFolder);
+            
+            if (!projectRoot) {
+                // Clear corrupted state
+                await this.context.globalState.update('tmdlFolder', undefined);
+                return;
+            }
 
-            const definitionPath = path.join(savedFolder, 'definition');
+            this.currentTmdlFolder = projectRoot;
+
+            const definitionPath = path.join(projectRoot, 'definition');
             if (fs.existsSync(definitionPath)) {
                 this.currentDefinitionFolder = definitionPath;
             } else {
-                this.currentDefinitionFolder = savedFolder;
+                this.currentDefinitionFolder = projectRoot;
             }
 
             await this.loadModel();

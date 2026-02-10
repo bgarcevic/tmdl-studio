@@ -106,7 +106,6 @@
 
 ## 7. Roadmap
 
-* **V1.0 (MVP):** Sidebar Explorer + Basic Validation + TMDL File Navigation.
 * **V1.1:** Fabric Deployment (XMLA) + Secret Management.
 * **V1.2:** Visual Dependency Graph (Webview).
 * **V1.3:** BPA (Best Practice Analyzer) rule engine.
@@ -114,8 +113,6 @@
 ### 7.1 CLI Enhancements (Timdle CLI Improvements)
 
 * **V0.9 (CLI Foundation):**
-  * Add `--help` flag for command discovery and usage information
-  * Add `--version` flag to display CLI version
   * Add shell completions (bash/zsh/fish) for tab-completion support
   * Create install script to add `timdle` to user PATH
   * Publish as self-contained single-file binary for easy distribution

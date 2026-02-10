@@ -41,6 +41,13 @@ class Program
         listTablesCommand.SetHandler(GetTablesCommand.Execute, pathArgument);
         rootCommand.AddCommand(listTablesCommand);
 
+        var deployCommand = new Command("deploy", "Deploy the TMDL model to a workspace (reads auth from TMDL_AUTH_CONFIG env var)")
+        {
+            pathArgument
+        };
+        deployCommand.SetHandler(DeployCommand.Execute, pathArgument);
+        rootCommand.AddCommand(deployCommand);
+
         return rootCommand.Invoke(args);
     }
 }
