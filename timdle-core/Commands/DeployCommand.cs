@@ -15,7 +15,8 @@ namespace TmdlStudio.Commands
         /// Executes the deploy command.
         /// </summary>
         /// <param name="path">Path to the TMDL folder.</param>
-        public static async Task Execute(string path)
+        /// <param name="noBrowser">If true, skips browser authentication and uses device code flow.</param>
+        public static async Task Execute(string path, bool noBrowser = false)
         {
             try
             {
@@ -60,7 +61,7 @@ namespace TmdlStudio.Commands
                             authConfig.ClientSecret,
                             authConfig.TenantId
                         );
-                        Console.WriteLine("Access token acquired successfully.");
+                        Console.WriteLine("✓ Access token acquired");
                     }
                     catch (Exception ex)
                     {
@@ -71,12 +72,16 @@ namespace TmdlStudio.Commands
                 }
                 else if (authConfig.Mode?.ToLower() == "interactive" && string.IsNullOrEmpty(authConfig.AccessToken))
                 {
-                    // CLI interactive mode - acquire token via device code flow
+                    // CLI interactive mode - use browser auth with fallback to device code
                     try
                     {
-                        Console.WriteLine("Starting interactive authentication...");
-                        authConfig.AccessToken = await TokenService.AcquireTokenByDeviceCodeAsync();
-                        Console.WriteLine("Authentication successful.");
+                        authConfig.AccessToken = await TokenService.AcquireTokenInteractiveAsync(!noBrowser);
+                    }
+                    catch (InvalidOperationException ex) when (ex.Message.Contains("CI environment"))
+                    {
+                        var errorResult = DeployResult.Error(ex.Message);
+                        OutputResult(errorResult);
+                        return;
                     }
                     catch (Exception ex)
                     {

@@ -41,11 +41,18 @@ class Program
         listTablesCommand.SetHandler(GetTablesCommand.Execute, pathArgument);
         rootCommand.AddCommand(listTablesCommand);
 
+        var noBrowserOption = new Option<bool>(
+            aliases: new[] { "--no-browser", "-n" },
+            description: "Skip browser authentication and use device code flow",
+            getDefaultValue: () => false
+        );
+
         var deployCommand = new Command("deploy", "Deploy the TMDL model to a workspace (reads auth from TMDL_AUTH_CONFIG env var)")
         {
-            pathArgument
+            pathArgument,
+            noBrowserOption
         };
-        deployCommand.SetHandler(DeployCommand.Execute, pathArgument);
+        deployCommand.SetHandler((path, noBrowser) => DeployCommand.Execute(path, noBrowser), pathArgument, noBrowserOption);
         rootCommand.AddCommand(deployCommand);
 
         return rootCommand.Invoke(args);
