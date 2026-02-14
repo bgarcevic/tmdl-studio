@@ -23,51 +23,6 @@ namespace TmdlStudio.Services
             return FabricApiService.DeployAsync(path, authConfig).GetAwaiter().GetResult();
         }
 
-        private static System.Collections.Generic.List<DeployChange> CalculateChanges(Database newDb, Database existingDb)
-        {
-            var changes = new System.Collections.Generic.List<DeployChange>();
-            
-            // Compare tables
-            foreach (var table in newDb.Model.Tables)
-            {
-                var existingTable = existingDb.Model.Tables.Find(table.Name);
-                if (existingTable == null)
-                {
-                    changes.Add(new DeployChange
-                    {
-                        ObjectType = "Table",
-                        ObjectName = table.Name,
-                        ChangeType = "Added"
-                    });
-                }
-                else
-                {
-                    // Check for modifications (simplified)
-                    changes.Add(new DeployChange
-                    {
-                        ObjectType = "Table",
-                        ObjectName = table.Name,
-                        ChangeType = "Modified"
-                    });
-                }
-            }
-
-            // Track removed tables
-            foreach (var existingTable in existingDb.Model.Tables)
-            {
-                if (newDb.Model.Tables.Find(existingTable.Name) == null)
-                {
-                    changes.Add(new DeployChange
-                    {
-                        ObjectType = "Table",
-                        ObjectName = existingTable.Name,
-                        ChangeType = "Removed"
-                    });
-                }
-            }
-
-            return changes;
-        }
         public static Database LoadModel(string path)
         {
             var database = TmdlSerializer.DeserializeDatabaseFromFolder(path);

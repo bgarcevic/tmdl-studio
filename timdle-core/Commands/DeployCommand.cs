@@ -11,150 +11,308 @@ namespace TmdlStudio.Commands
     /// </summary>
     public static class DeployCommand
     {
+        private const string EnvWorkspaceUrl = "TMDL_WORKSPACE_URL";
+        private const string EnvClientId = "TMDL_CLIENT_ID";
+        private const string EnvClientSecret = "TMDL_CLIENT_SECRET";
+        private const string EnvTenantId = "TMDL_TENANT_ID";
+
         /// <summary>
         /// Executes the deploy command.
         /// </summary>
-        /// <param name="path">Path to the TMDL folder.</param>
-        /// <param name="noBrowser">If true, skips browser authentication and uses device code flow.</param>
-        public static async Task Execute(string path, bool noBrowser = false)
+        public static async Task Execute(
+            string path,
+            bool noBrowser = false,
+            string workspace = null,
+            string name = null,
+            bool interactive = false,
+            bool servicePrincipal = false,
+            string clientId = null,
+            string clientSecret = null,
+            string tenantId = null)
         {
             try
             {
-                // Read auth config from environment variable to avoid exposing credentials in command line
-                string authJson = Environment.GetEnvironmentVariable("TMDL_AUTH_CONFIG");
-                
-                if (string.IsNullOrEmpty(authJson))
-                {
-                    var errorResult = DeployResult.Error("Authentication configuration not found. Expected TMDL_AUTH_CONFIG environment variable.");
-                    OutputResult(errorResult);
-                    return;
-                }
-
-                var authConfig = JsonSerializer.Deserialize<AuthConfig>(authJson, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                });
+                var authConfig = ResolveAuthConfig(
+                    workspace,
+                    name,
+                    interactive,
+                    servicePrincipal,
+                    clientId,
+                    clientSecret,
+                    tenantId);
 
                 if (authConfig == null)
                 {
-                    var errorResult = DeployResult.Error("Failed to parse authentication configuration");
-                    OutputResult(errorResult);
+                    OutputResult(DeployResult.Error("Failed to resolve authentication configuration."));
                     return;
                 }
 
-                // Validate authentication configuration
-                if (!ValidateAuthConfig(authConfig, out string errorMessage))
+                if (!ValidateAuthConfig(authConfig, out var errorMessage))
                 {
-                    var errorResult = DeployResult.Error(errorMessage);
-                    OutputResult(errorResult);
+                    OutputResult(DeployResult.Error(errorMessage));
                     return;
                 }
 
-                // Acquire access token based on authentication mode
-                if (authConfig.IsServicePrincipal)
+                if (authConfig.Mode?.ToLower() == "interactive")
                 {
-                    try
-                    {
-                        Console.WriteLine("Acquiring access token for service principal...");
-                        authConfig.AccessToken = await TokenService.AcquireTokenByServicePrincipalAsync(
-                            authConfig.ClientId,
-                            authConfig.ClientSecret,
-                            authConfig.TenantId
-                        );
-                        Console.WriteLine("✓ Access token acquired");
-                    }
-                    catch (Exception ex)
-                    {
-                        var errorResult = DeployResult.Error($"Failed to acquire access token: {ex.Message}");
-                        OutputResult(errorResult);
-                        return;
-                    }
-                }
-                else if (authConfig.Mode?.ToLower() == "interactive" && string.IsNullOrEmpty(authConfig.AccessToken))
-                {
-                    // CLI interactive mode - use browser auth with fallback to device code
-                    try
+                    if (!authConfig.HasUsableAccessToken())
                     {
                         authConfig.AccessToken = await TokenService.AcquireTokenInteractiveAsync(!noBrowser);
+                        authConfig.AccessTokenExpiresOn = DateTime.UtcNow.AddMinutes(55);
                     }
-                    catch (InvalidOperationException ex) when (ex.Message.Contains("CI environment"))
+
+                    TokenCacheService.Save(authConfig);
+                }
+                else
+                {
+                    if (string.IsNullOrWhiteSpace(authConfig.ClientSecret))
                     {
-                        var errorResult = DeployResult.Error(ex.Message);
-                        OutputResult(errorResult);
-                        return;
+                        if (TokenService.IsCiEnvironment())
+                        {
+                            OutputResult(DeployResult.Error($"Missing {EnvClientSecret} for service principal authentication in CI environment."));
+                            return;
+                        }
+
+                        authConfig.ClientSecret = ConsolePrompter.PromptSecret("Client Secret");
                     }
-                    catch (Exception ex)
-                    {
-                        var errorResult = DeployResult.Error($"Failed to authenticate: {ex.Message}");
-                        OutputResult(errorResult);
-                        return;
-                    }
+
+                    authConfig.AccessToken = await TokenService.AcquireTokenByServicePrincipalAsync(
+                        authConfig.ClientId,
+                        authConfig.ClientSecret,
+                        authConfig.TenantId);
+
+                    // Do not persist service principal secret.
+                    authConfig.ClientSecret = null;
+                    TokenCacheService.Save(authConfig);
                 }
 
                 var result = TmdlService.Deploy(path, authConfig);
+                TokenCacheService.Save(authConfig);
                 OutputResult(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                OutputResult(DeployResult.Error(ex.Message));
             }
             catch (Exception ex)
             {
-                var errorResult = DeployResult.Error($"Deployment command failed: {ex.Message}");
-                OutputResult(errorResult);
+                OutputResult(DeployResult.Error($"Deployment command failed: {ex.Message}"));
             }
+        }
+
+        private static AuthConfig ResolveAuthConfig(
+            string workspace,
+            string name,
+            bool interactive,
+            bool servicePrincipal,
+            string clientId,
+            string clientSecret,
+            string tenantId)
+        {
+            if (interactive && servicePrincipal)
+            {
+                throw new InvalidOperationException("Use either --interactive or --service-principal, not both.");
+            }
+
+            var config = new AuthConfig();
+
+            // Merge order (low -> high): cache -> individual env -> legacy JSON env.
+            // CLI flags are applied last as the highest priority.
+            MergeMissing(config, TokenCacheService.Load());
+            MergeMissing(config, ResolveFromIndividualEnvVars());
+            MergeMissing(config, ResolveFromLegacyEnvVar());
+
+            // Highest priority: explicit CLI flags/options.
+            if (!string.IsNullOrWhiteSpace(workspace)) { config.WorkspaceUrl = workspace; }
+            if (interactive) { config.Mode = "interactive"; }
+            if (servicePrincipal) { config.Mode = "service-principal"; }
+            if (!string.IsNullOrWhiteSpace(clientId)) { config.ClientId = clientId; }
+            if (!string.IsNullOrWhiteSpace(clientSecret)) { config.ClientSecret = clientSecret; }
+            if (!string.IsNullOrWhiteSpace(tenantId)) { config.TenantId = tenantId; }
+
+            // Name override is highest priority, but preserve previous candidate for rename.
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                if (string.IsNullOrWhiteSpace(config.PreviousModelName) && !string.IsNullOrWhiteSpace(config.ModelName))
+                {
+                    config.PreviousModelName = config.ModelName;
+                }
+                config.ModelName = name;
+            }
+
+            // Infer or prompt mode if needed.
+            if (string.IsNullOrWhiteSpace(config.Mode))
+            {
+                if (!string.IsNullOrWhiteSpace(config.ClientId) && !string.IsNullOrWhiteSpace(config.TenantId))
+                {
+                    config.Mode = "service-principal";
+                }
+                else if (!TokenService.IsCiEnvironment())
+                {
+                    config.Mode = ConsolePrompter.PromptChoice(
+                        "Select authentication mode:",
+                        "interactive",
+                        "service-principal");
+                }
+                else
+                {
+                    config.Mode = "interactive";
+                }
+            }
+
+            // 5) Azure CLI access token (simple fallback, interactive mode only)
+            if (config.Mode == "interactive" && string.IsNullOrWhiteSpace(config.AccessToken))
+            {
+                var azToken = AzureCliService.TryGetAccessToken();
+                if (!string.IsNullOrWhiteSpace(azToken))
+                {
+                    config.AccessToken = azToken;
+                    config.AccessTokenExpiresOn = DateTime.UtcNow.AddMinutes(30);
+                }
+            }
+
+            // 6) Interactive prompts if still incomplete and not in CI
+            if (TokenService.IsCiEnvironment())
+            {
+                return config;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.WorkspaceUrl))
+            {
+                config.WorkspaceUrl = ConsolePrompter.PromptRequired("Workspace URL");
+            }
+
+            if (config.Mode == "service-principal")
+            {
+                if (string.IsNullOrWhiteSpace(config.ClientId))
+                {
+                    config.ClientId = ConsolePrompter.PromptRequired("Client ID");
+                }
+
+                if (string.IsNullOrWhiteSpace(config.TenantId))
+                {
+                    config.TenantId = ConsolePrompter.PromptRequired("Tenant ID");
+                }
+            }
+
+            return config;
+        }
+
+        private static AuthConfig ResolveFromIndividualEnvVars()
+        {
+            var workspace = Environment.GetEnvironmentVariable(EnvWorkspaceUrl);
+            var envClientId = Environment.GetEnvironmentVariable(EnvClientId);
+            var envClientSecret = Environment.GetEnvironmentVariable(EnvClientSecret);
+            var envTenantId = Environment.GetEnvironmentVariable(EnvTenantId);
+
+            if (string.IsNullOrWhiteSpace(workspace) &&
+                string.IsNullOrWhiteSpace(envClientId) &&
+                string.IsNullOrWhiteSpace(envClientSecret) &&
+                string.IsNullOrWhiteSpace(envTenantId))
+            {
+                return null;
+            }
+
+            return new AuthConfig
+            {
+                WorkspaceUrl = workspace,
+                ClientId = envClientId,
+                ClientSecret = envClientSecret,
+                TenantId = envTenantId,
+                Mode = (!string.IsNullOrWhiteSpace(envClientId) && !string.IsNullOrWhiteSpace(envTenantId))
+                    ? "service-principal"
+                    : "interactive"
+            };
+        }
+
+        private static AuthConfig ResolveFromLegacyEnvVar()
+        {
+            var authJson = Environment.GetEnvironmentVariable("TMDL_AUTH_CONFIG");
+            if (string.IsNullOrWhiteSpace(authJson))
+            {
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<AuthConfig>(authJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static void MergeMissing(AuthConfig target, AuthConfig source)
+        {
+            if (target == null || source == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(target.Mode)) { target.Mode = source.Mode; }
+            if (string.IsNullOrWhiteSpace(target.WorkspaceUrl)) { target.WorkspaceUrl = source.WorkspaceUrl; }
+            if (string.IsNullOrWhiteSpace(target.AccessToken)) { target.AccessToken = source.AccessToken; }
+            if (!target.AccessTokenExpiresOn.HasValue) { target.AccessTokenExpiresOn = source.AccessTokenExpiresOn; }
+            if (string.IsNullOrWhiteSpace(target.AccountUsername)) { target.AccountUsername = source.AccountUsername; }
+            // Do not merge cached model name as an implicit override.
+            // Model name should come from --name only; otherwise deploy resolves from .platform/database.
+            if (string.IsNullOrWhiteSpace(target.PreviousModelName))
+            {
+                target.PreviousModelName = !string.IsNullOrWhiteSpace(source.PreviousModelName)
+                    ? source.PreviousModelName
+                    : source.ModelName;
+            }
+            if (string.IsNullOrWhiteSpace(target.ClientId)) { target.ClientId = source.ClientId; }
+            if (string.IsNullOrWhiteSpace(target.ClientSecret)) { target.ClientSecret = source.ClientSecret; }
+            if (string.IsNullOrWhiteSpace(target.TenantId)) { target.TenantId = source.TenantId; }
         }
 
         /// <summary>
         /// Validates the authentication configuration.
         /// </summary>
-        /// <param name="authConfig">The authentication configuration.</param>
-        /// <param name="errorMessage">Output error message if validation fails.</param>
-        /// <returns>True if valid, false otherwise.</returns>
         private static bool ValidateAuthConfig(AuthConfig authConfig, out string errorMessage)
         {
             errorMessage = null;
 
-            if (string.IsNullOrEmpty(authConfig.WorkspaceUrl))
+            if (string.IsNullOrWhiteSpace(authConfig.WorkspaceUrl))
             {
-                errorMessage = "Workspace URL is required";
+                errorMessage = "Workspace URL is required. Use --workspace or TMDL_WORKSPACE_URL.";
                 return false;
             }
 
             if (authConfig.Mode?.ToLower() == "interactive")
             {
-                // Interactive mode - CLI will acquire token via device code flow
-                // No credentials required upfront, user will authenticate via browser
                 return true;
             }
-            else if (authConfig.IsServicePrincipal)
+
+            if (authConfig.Mode?.ToLower() == "service-principal" || authConfig.Mode?.ToLower() == "env")
             {
-                // Service principal auth - all credentials required
-                if (string.IsNullOrEmpty(authConfig.ClientId))
+                if (string.IsNullOrWhiteSpace(authConfig.ClientId))
                 {
-                    errorMessage = "Client ID is required for service principal authentication";
+                    errorMessage = "Client ID is required for service principal authentication.";
                     return false;
                 }
-                if (string.IsNullOrEmpty(authConfig.ClientSecret))
+
+                if (string.IsNullOrWhiteSpace(authConfig.TenantId))
                 {
-                    errorMessage = "Client Secret is required for service principal authentication";
+                    errorMessage = "Tenant ID is required for service principal authentication.";
                     return false;
                 }
-                if (string.IsNullOrEmpty(authConfig.TenantId))
-                {
-                    errorMessage = "Tenant ID is required for service principal authentication";
-                    return false;
-                }
-            }
-            else
-            {
-                errorMessage = "Invalid authentication configuration. Must provide either access token (interactive) or service principal credentials.";
-                return false;
+
+                return true;
             }
 
-            return true;
+            errorMessage = "Invalid authentication mode. Use interactive or service-principal.";
+            return false;
         }
 
         /// <summary>
         /// Outputs the deployment result as JSON.
         /// </summary>
-        /// <param name="result">The deployment result.</param>
         private static void OutputResult(DeployResult result)
         {
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions

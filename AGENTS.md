@@ -256,7 +256,6 @@ This is a fundamental architectural requirement:
 
 ```bash
 # Interactive authentication (device code flow)
-export TMDL_AUTH_CONFIG='{"mode":"interactive","workspaceUrl":"https://..."}'
 ./timdle deploy /path/to/tmdl
 
 # Service principal (CI/CD)
