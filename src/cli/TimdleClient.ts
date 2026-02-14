@@ -15,7 +15,7 @@ export class TimdleClient {
      * Creates a new TimdleClient instance.
      * @param context - The VS Code extension context for CLI path resolution.
      */
-    constructor(private context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext) {
         this.cliPath = PathUtils.getCliPath(context);
     }
 
@@ -26,7 +26,7 @@ export class TimdleClient {
      */
     async validate(tmdlPath: string): Promise<string> {
         return new Promise((resolve, reject) => {
-            cp.exec(`"${this.cliPath}" validate "${tmdlPath}"`, (err, stdout, stderr) => {
+            cp.exec(`"${this.cliPath}" validate "${tmdlPath}"`, (err, stdout) => {
                 if (err) {
                     reject(err);
                     return;
@@ -45,7 +45,7 @@ export class TimdleClient {
         return new Promise((resolve, reject) => {
             const command = `"${this.cliPath}" get-model-structure "${tmdlPath}"`;
 
-            cp.exec(command, (err, stdout, stderr) => {
+            cp.exec(command, (err, stdout) => {
                 if (err) {
                     reject(err);
                     return;
@@ -57,23 +57,6 @@ export class TimdleClient {
                 } catch (parseError) {
                     reject(parseError);
                 }
-            });
-        });
-    }
-
-    /**
-     * Lists tables in the TMDL model.
-     * @param tmdlPath - The file system path to the TMDL folder.
-     * @returns A promise that resolves to the table list output.
-     */
-    async listTables(tmdlPath: string): Promise<string> {
-        return new Promise((resolve, reject) => {
-            cp.exec(`"${this.cliPath}" list-tables "${tmdlPath}"`, (err, stdout, stderr) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve(stdout);
             });
         });
     }
@@ -94,7 +77,7 @@ export class TimdleClient {
             };
             const command = `"${this.cliPath}" deploy "${tmdlPath}"`;
 
-            cp.exec(command, { env }, (err, stdout, stderr) => {
+            cp.exec(command, { env }, (err, stdout) => {
                 if (err) {
                     reject(err);
                     return;
@@ -118,6 +101,3 @@ export interface DeployResult {
     isSuccess: boolean;
     message: string;
 }
-
-// Re-export auth types for convenience
-export { AuthConfig, AuthMode, ServicePrincipalCredentials } from '../types/auth';

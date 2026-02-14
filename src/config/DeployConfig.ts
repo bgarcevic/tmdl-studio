@@ -35,15 +35,6 @@ export class DeployConfig {
     }
 
     /**
-     * Clears the cached workspace URL for a project.
-     * @param projectPath - The path to the project root.
-     */
-    clearWorkspaceUrl(projectPath: string): Thenable<void> {
-        const key = this.getStorageKey(projectPath);
-        return this.context.workspaceState.update(key, undefined);
-    }
-
-    /**
      * Generates a storage key for a project path.
      * Uses a hash to keep keys short and filesystem-safe.
      * @param projectPath - The project path.

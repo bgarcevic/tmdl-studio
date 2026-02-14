@@ -288,7 +288,6 @@ function getOpenCommand(
     if (!relativePath) {return undefined;}
 
     const fullPath = path.join(folderPath, relativePath);
-    const uri = vscode.Uri.file(fullPath);
 
     const command: vscode.Command = {
         command: 'tmdl-studio.open-file-at-line',

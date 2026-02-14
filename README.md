@@ -1,71 +1,112 @@
-# tmdl-studio README
+# TMDL Studio
 
-This is the README for your extension "tmdl-studio". After writing up a brief description, we recommend including the following sections.
+[![Status](https://img.shields.io/badge/status-active%20development-blue)](https://github.com/bgarcevic/tmdl-studio)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.99.0-007ACC)](https://code.visualstudio.com/)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
+
+Explore, validate, and deploy TMDL semantic models directly from VS Code.
+
+TMDL Studio combines:
+- A VS Code extension (UI + commands)
+- A standalone `timdle` CLI (core logic, CI/CD-ready)
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **TMDL Explorer** sidebar for browsing model objects
+- **Validate Model** command for fast checks during editing
+- **Deploy to Workspace** command for Fabric/Power BI deployment
+- **Multiple auth modes**: interactive, service principal, environment variables
+- **Auto-refresh** when supported model files are saved
 
-For example if there is an image subfolder under your extension project workspace:
+## Quick Start
 
-\!\[feature X\]\(images/feature-x.png\)
+1. Open a folder containing a TMDL model.
+2. Run `TMDL Studio: Select TMDL Model`.
+3. Open **TMDL Explorer** in the Activity Bar.
+4. Run `TMDL Studio: Validate Model`.
+5. Run `TMDL Studio: Deploy to Workspace` when ready.
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+Project root detection supports:
+- `definition/` folder with TMDL content
+- `definition.pbism`
+- `.platform`
+- `.tmdl` files
 
-## Requirements
+## Screenshots
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+> Add screenshots/gifs in an `images/` folder and update these paths.
 
-## Extension Settings
+![TMDL Explorer](images/tmdl-explorer.png)
+![Deploy Flow](images/deploy-flow.png)
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Install and Run From Source
 
-For example:
+Prerequisites:
+- Node.js 20+
+- npm
+- .NET 8 SDK
+- VS Code `^1.99.0`
+- Recommended extension: `analysis-services.TMDL`
 
-This extension contributes the following settings:
+Build and run:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+```bash
+npm install
+dotnet build timdle-core/Timdle.csproj
+npm run compile
+```
 
-## Known Issues
+Then open the repo in VS Code and press `F5` to start the Extension Development Host.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## CLI Usage (Standalone)
 
-## Release Notes
+`timdle` works without VS Code and is suitable for CI/CD pipelines.
 
-Users appreciate release notes as you update your extension.
+```bash
+timdle validate /path/to/model
+timdle get-model-structure /path/to/model
+timdle list-tables /path/to/model
+timdle login --interactive
+timdle deploy /path/to/model --interactive --workspace "https://api.fabric.microsoft.com/v1/workspaces/<id>"
+```
 
-### 1.0.0
+## Authentication (CI/CD)
 
-Initial release of ...
+Environment variables:
 
-### 1.0.1
+```bash
+TMDL_WORKSPACE_URL
+TMDL_CLIENT_ID
+TMDL_CLIENT_SECRET
+TMDL_TENANT_ID
+```
 
-Fixed issue #.
+Example:
 
-### 1.1.0
+```bash
+export TMDL_WORKSPACE_URL="https://api.fabric.microsoft.com/v1/workspaces/<id>"
+export TMDL_CLIENT_ID="<client-id>"
+export TMDL_CLIENT_SECRET="<client-secret>"
+export TMDL_TENANT_ID="<tenant-id>"
 
-Added features X, Y, and Z.
+timdle deploy /path/to/model --service-principal
+```
 
----
+## Developer Commands
 
-## Following extension guidelines
+```bash
+npm run compile
+npm run watch
+npm run lint
+npm run test
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+dotnet build timdle-core/Timdle.csproj
+dotnet publish timdle-core/Timdle.csproj
+dotnet test timdle-core.Tests/timdle-core.Tests.csproj
+```
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+## Roadmap
 
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- richer dependency visualization
+- deeper semantic validation checks
+- improved deployment preview and impact reporting

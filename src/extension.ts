@@ -20,13 +20,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     treeProvider.loadState();
 
-    const selectFolderCommand = SelectFolderCommand.register(context, treeProvider);
+    const selectFolderCommand = SelectFolderCommand.register(treeProvider);
     const validateCommand = ValidateCommand.register(context);
     const deployCommand = DeployCommand.register(context, treeProvider);
-    const closeModelCommand = CloseModelCommand.register(context, treeProvider);
+    const closeModelCommand = CloseModelCommand.register(treeProvider);
     const openFileAtLineCommand = OpenFileAtLineCommand.register();
-    const fileOpenListener = FileOpenListener.register(context, treeProvider);
-    const fileSaveListener = FileSaveListener.register(context, treeProvider);
+    const fileOpenListener = FileOpenListener.register(treeProvider);
+    const fileSaveListener = FileSaveListener.register(treeProvider);
 
     context.subscriptions.push(selectFolderCommand);
     context.subscriptions.push(validateCommand);

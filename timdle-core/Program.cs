@@ -1,6 +1,5 @@
 using System;
 using System.CommandLine;
-using System.Reflection;
 using TmdlStudio.Commands;
 
 class Program
@@ -12,8 +11,6 @@ class Program
             Description = "TMDL Studio CLI - Validate and explore Tabular models in TMDL format",
             Name = "timdle"
         };
-
-        var version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.9.0";
 
         var pathArgument = new Argument<string>("path", getDefaultValue: () => Environment.CurrentDirectory)
         {

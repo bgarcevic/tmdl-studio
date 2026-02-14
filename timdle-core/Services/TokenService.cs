@@ -324,48 +324,5 @@ namespace TmdlStudio.Services
             }
         }
 
-        /// <summary>
-        /// Validates that an access token is available for interactive authentication.
-        /// </summary>
-        /// <param name="accessToken">The access token to validate.</param>
-        /// <returns>True if the token is valid (not empty).</returns>
-        public static bool ValidateAccessToken(string accessToken)
-        {
-            return !string.IsNullOrEmpty(accessToken);
-        }
-
-        /// <summary>
-        /// Refreshes an access token using service principal credentials if needed.
-        /// </summary>
-        /// <param name="clientId">The service principal client ID.</param>
-        /// <param name="clientSecret">The service principal client secret.</param>
-        /// <param name="tenantId">The Azure AD tenant ID.</param>
-        /// <param name="existingToken">The existing token (can be null or empty).</param>
-        /// <returns>The refreshed access token, or null if refresh failed.</returns>
-        public static async Task<string> RefreshTokenIfNeededAsync(
-            string clientId,
-            string clientSecret,
-            string tenantId,
-            string existingToken)
-        {
-            if (!string.IsNullOrEmpty(existingToken))
-            {
-                return existingToken;
-            }
-
-            try
-            {
-                return await AcquireTokenByServicePrincipalAsync(clientId, clientSecret, tenantId);
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the Power BI resource URL for token scope.
-        /// </summary>
-        public static string PowerBiResourceUrl => PowerBiResource;
     }
 }

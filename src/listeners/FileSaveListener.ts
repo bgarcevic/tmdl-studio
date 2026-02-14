@@ -9,11 +9,10 @@ import { ProjectRootDetector } from '../utils/ProjectRootDetector';
 export class FileSaveListener {
     /**
      * Registers the file save listener with VS Code.
-     * @param context - The extension context.
      * @param treeProvider - The tabular tree provider instance.
      * @returns The disposable listener registration.
      */
-    static register(context: vscode.ExtensionContext, treeProvider: TabularTreeProvider): vscode.Disposable {
+    static register(treeProvider: TabularTreeProvider): vscode.Disposable {
         return vscode.workspace.onDidSaveTextDocument(async (document) => {
             const filePath = document.uri.fsPath;
             const extension = path.extname(filePath);

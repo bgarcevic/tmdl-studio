@@ -9,11 +9,10 @@ import { ProjectRootDetector } from '../utils/ProjectRootDetector';
 export class FileOpenListener {
     /**
      * Registers the file open listener with VS Code.
-     * @param context - The extension context.
      * @param treeProvider - The tabular tree provider instance.
      * @returns The disposable listener registration.
      */
-    static register(context: vscode.ExtensionContext, treeProvider: TabularTreeProvider): vscode.Disposable {
+    static register(treeProvider: TabularTreeProvider): vscode.Disposable {
         const openedFiles = new Set<string>();
 
         return vscode.workspace.onDidOpenTextDocument(async (document) => {

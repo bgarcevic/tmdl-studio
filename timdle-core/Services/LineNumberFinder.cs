@@ -13,8 +13,7 @@ namespace TmdlStudio.Services
                 return null;
             }
 
-            var content = File.ReadAllText(filePath);
-            var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.None);
+            var lines = File.ReadLines(filePath).ToArray();
 
             for (int i = 0; i < lines.Length; i++)
             {
@@ -28,6 +27,7 @@ namespace TmdlStudio.Services
                     "relationship" => IsRelationshipDeclaration(line, itemName),
                     "expression" => IsExpressionDeclaration(line, itemName),
                     "cultureInfo" => IsCultureDeclaration(line, itemName),
+                    "culture" => IsCultureDeclaration(line, itemName),
                     _ => false
                 };
 
@@ -79,12 +79,12 @@ namespace TmdlStudio.Services
 
         private static bool IsCultureDeclaration(string line, string name)
         {
-            return line.StartsWith($"cultureInfo {name}");
+            return line.StartsWith($"cultureInfo {name}") || line.StartsWith($"culture {name}");
         }
 
         private static bool NeedsQuotes(string name)
         {
-            char[] specialChars = new[] { ' ', '=', ':', '\'' };
+            char[] specialChars = new[] { ' ', '.', '=', ':', '\'' };
             return name.Any(c => Array.Exists(specialChars, sc => sc == c));
         }
 

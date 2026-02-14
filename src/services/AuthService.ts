@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as https from 'https';
-import { PublicClientApplication, DeviceCodeRequest, SilentFlowRequest, AuthenticationResult } from '@azure/msal-node';
+import { PublicClientApplication, DeviceCodeRequest, AuthenticationResult } from '@azure/msal-node';
 import {
     AuthMode,
     AuthResult,
@@ -19,7 +19,6 @@ export class AuthService {
     private outputChannel: vscode.OutputChannel;
 
     private static readonly TOKEN_CACHE_KEY = 'tmdl-auth-token-cache';
-    private static readonly ACCOUNT_CACHE_KEY = 'tmdl-auth-account';
 
     /**
      * Creates a new AuthService instance.
@@ -45,7 +44,13 @@ export class AuthService {
             case 'interactive':
                 return this.authenticateInteractive();
             case 'service-principal':
-                return this.authenticateServicePrincipal();
+                return {
+                    accessToken: '',
+                    expiresOn: new Date(Date.now() + 3600 * 1000),
+                    account: {
+                        username: 'Service Principal'
+                    }
+                };
             case 'env':
                 return this.authenticateFromEnv();
             default:
@@ -117,54 +122,6 @@ export class AuthService {
     }
 
     /**
-     * Refreshes the token if needed.
-     * @returns The valid access token, or null if refresh failed.
-     */
-    async refreshTokenIfNeeded(): Promise<string | null> {
-        const cachedAccount = await this.context.secrets.get(AuthService.ACCOUNT_CACHE_KEY);
-        if (!cachedAccount) {
-            return null;
-        }
-
-        const account = JSON.parse(cachedAccount);
-
-        const silentRequest: SilentFlowRequest = {
-            account: account,
-            scopes: [...MSAL_CONFIG.scopes]
-        };
-
-        try {
-            const result = await this.msalClient.acquireTokenSilent(silentRequest);
-            if (result && result.accessToken) {
-                await this.cacheToken(result);
-                return result.accessToken;
-            }
-        } catch (error) {
-            this.outputChannel.appendLine(`Token refresh failed: ${error}`);
-        }
-
-        return null;
-    }
-
-    /**
-     * Authenticates using service principal credentials from user input.
-     * @returns The authentication result.
-     */
-    private async authenticateServicePrincipal(): Promise<AuthResult> {
-        const credentials = await this.promptForServicePrincipalCredentials();
-
-        // For service principal, we don't do interactive auth
-        // Instead, we pass credentials to CLI for server-side auth
-        return {
-            accessToken: '', // Will be obtained by CLI
-            expiresOn: new Date(Date.now() + 3600 * 1000),
-            account: {
-                username: `Service Principal: ${credentials.clientId}`
-            }
-        };
-    }
-
-    /**
      * Authenticates using environment variables.
      * @returns The authentication result.
      */
@@ -185,36 +142,6 @@ export class AuthService {
                 username: `Environment: ${credentials.clientId}`
             }
         };
-    }
-
-    /**
-     * Prompts user for service principal credentials.
-     * @returns The service principal credentials.
-     */
-    private async promptForServicePrincipalCredentials(): Promise<ServicePrincipalCredentials> {
-        const clientId = await vscode.window.showInputBox({
-            prompt: 'Enter the Service Principal Client ID',
-            placeHolder: 'Client ID',
-            ignoreFocusOut: true
-        });
-        if (!clientId) { throw new Error('Client ID is required'); }
-
-        const clientSecret = await vscode.window.showInputBox({
-            prompt: 'Enter the Service Principal Client Secret',
-            placeHolder: 'Client Secret',
-            password: true,
-            ignoreFocusOut: true
-        });
-        if (!clientSecret) { throw new Error('Client Secret is required'); }
-
-        const tenantId = await vscode.window.showInputBox({
-            prompt: 'Enter the Tenant ID',
-            placeHolder: 'Tenant ID',
-            ignoreFocusOut: true
-        });
-        if (!tenantId) { throw new Error('Tenant ID is required'); }
-
-        return { clientId, clientSecret, tenantId };
     }
 
     /**
@@ -271,7 +198,6 @@ export class AuthService {
         };
 
         await this.context.secrets.store(AuthService.TOKEN_CACHE_KEY, JSON.stringify(cacheEntry));
-        await this.context.secrets.store(AuthService.ACCOUNT_CACHE_KEY, JSON.stringify(result.account));
     }
 
     /**
@@ -301,15 +227,6 @@ export class AuthService {
         }
 
         return null;
-    }
-
-    /**
-     * Clears cached authentication tokens.
-     */
-    async clearCache(): Promise<void> {
-        await this.context.secrets.delete(AuthService.TOKEN_CACHE_KEY);
-        await this.context.secrets.delete(AuthService.ACCOUNT_CACHE_KEY);
-        this.outputChannel.appendLine('Authentication cache cleared');
     }
 
     /**
