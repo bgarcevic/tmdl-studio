@@ -1,3 +1,5 @@
+using System;
+
 namespace TmdlStudio.Models
 {
     /// <summary>
@@ -19,6 +21,28 @@ namespace TmdlStudio.Models
         /// Access token for interactive authentication.
         /// </summary>
         public string AccessToken { get; set; }
+
+        /// <summary>
+        /// Access token expiration in UTC (if known).
+        /// </summary>
+        public DateTime? AccessTokenExpiresOn { get; set; }
+
+        /// <summary>
+        /// Account username for cached interactive authentication.
+        /// </summary>
+        public string AccountUsername { get; set; }
+
+        /// <summary>
+        /// Semantic model display name override/cached value.
+        /// Used by deploy when resolving the target item name.
+        /// </summary>
+        public string ModelName { get; set; }
+
+        /// <summary>
+        /// Previous model name candidate used when --name override is supplied.
+        /// Helps locate existing item for rename before updating definition.
+        /// </summary>
+        public string PreviousModelName { get; set; }
 
         /// <summary>
         /// Client ID for service principal authentication.
@@ -50,5 +74,24 @@ namespace TmdlStudio.Models
             !string.IsNullOrEmpty(ClientId) &&
             !string.IsNullOrEmpty(ClientSecret) &&
             !string.IsNullOrEmpty(TenantId);
+
+        /// <summary>
+        /// Checks if a cached interactive token is still likely usable.
+        /// </summary>
+        public bool HasUsableAccessToken()
+        {
+            if (string.IsNullOrEmpty(AccessToken))
+            {
+                return false;
+            }
+
+            if (!AccessTokenExpiresOn.HasValue)
+            {
+                return true;
+            }
+
+            // 5-minute refresh buffer.
+            return AccessTokenExpiresOn.Value > DateTime.UtcNow.AddMinutes(5);
+        }
     }
 }

@@ -117,16 +117,6 @@ export class TimdleClient {
 export interface DeployResult {
     isSuccess: boolean;
     message: string;
-    changes: DeployChange[];
-}
-
-/**
- * Individual change in a deployment.
- */
-export interface DeployChange {
-    objectType: string;
-    objectName: string;
-    changeType: string;
 }
 
 // Re-export auth types for convenience

@@ -373,36 +373,10 @@ export class DeployCommand {
         if (result.isSuccess) {
             this.outputChannel.appendLine(`\n✓ ${result.message}`);
 
-            if (result.changes && result.changes.length > 0) {
-                this.outputChannel.appendLine('\nChanges:');
-                result.changes.forEach(change => {
-                    const icon = this.getChangeIcon(change.changeType);
-                    this.outputChannel.appendLine(`  ${icon} ${change.objectType}: ${change.objectName}`);
-                });
-            }
-
             vscode.window.showInformationMessage(result.message);
         } else {
             this.outputChannel.appendLine(`\n✗ ${result.message}`);
             vscode.window.showErrorMessage(result.message);
-        }
-    }
-
-    /**
-     * Gets an icon representation for a change type.
-     * @param changeType - The type of change.
-     * @returns An icon string.
-     */
-    private getChangeIcon(changeType: string): string {
-        switch (changeType.toLowerCase()) {
-            case 'added':
-                return '+';
-            case 'removed':
-                return '-';
-            case 'modified':
-                return '~';
-            default:
-                return '?';
         }
     }
 }
