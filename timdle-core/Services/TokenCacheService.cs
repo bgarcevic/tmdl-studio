@@ -113,24 +113,6 @@ namespace TmdlStudio.Services
         }
 
         /// <summary>
-        /// Clears cached authentication config.
-        /// </summary>
-        public static void Clear()
-        {
-            var filePath = GetCacheFilePath();
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
-
-            var logicalMapPath = GetLogicalMapFilePath();
-            if (File.Exists(logicalMapPath))
-            {
-                File.Delete(logicalMapPath);
-            }
-        }
-
-        /// <summary>
         /// Gets cached Fabric item id by workspace/logicalId pair.
         /// </summary>
         public static string GetMappedItemId(string workspaceId, string logicalId)

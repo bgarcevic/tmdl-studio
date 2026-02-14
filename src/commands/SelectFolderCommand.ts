@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { TabularTreeProvider } from '../views/explorer/TabularTreeProvider';
 
 export class SelectFolderCommand {
-    static register(context: vscode.ExtensionContext, treeProvider: TabularTreeProvider): vscode.Disposable {
+    static register(treeProvider: TabularTreeProvider): vscode.Disposable {
         return vscode.commands.registerCommand('tmdl-studio.select-folder', async () => {
             const uri = await vscode.window.showOpenDialog({
                 canSelectFolders: true,

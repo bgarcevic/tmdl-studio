@@ -122,7 +122,6 @@ This codebase follows the Service Pattern to cleanly separate concerns:
 - Isolate "messy" parts (CLI calls, parsing) from UI parts
 - UI components should use service classes, not call CLI directly
 - Commands are self-contained with their own service dependencies
-- Configuration centralized in `config.ts`
 
 ### C# (CLI Tool)
 
@@ -142,10 +141,9 @@ This codebase follows the Service Pattern to cleanly separate concerns:
 - **`Commands/`** - Command Handlers: Thin wrappers around services
   - Commands call `TmdlService` methods and output JSON
   - Error handling at command level
-  - `CommandRouter.cs` - Central command routing logic
 
 - **`Program.cs`** - The Switchboard: Minimal entry point
-  - Parse args, call `CommandRouter.Route()`
+  - Defines CLI commands and binds handlers using `System.CommandLine`
   - No business logic
 
 **Key Principles:**
@@ -207,16 +205,16 @@ src/
     editor/                 # (Future) Custom editors for DAX/TMDL
   commands/                 # VS Code Commands
     ValidateCommand.ts
-  config.ts                 # Central place to read vscode.workspace.getConfiguration
   extension.ts              # The "Switchboard" (Wiring only)
   test/
     extension.test.ts       # Test suite
 
 timdle-core/
   Commands/
-    CommandRouter.cs         # Central routing logic
+    DeployCommand.cs
     GetModelStructureCommand.cs
     GetTablesCommand.cs      # Renamed from ListTablesCommand
+    LoginCommand.cs
     ValidateCommand.cs
   Services/
     TmdlService.cs           # All TOM interop and DTO conversion

@@ -12,7 +12,7 @@ export class ValidateCommand {
      * Creates a new ValidateCommand instance.
      * @param context - The VS Code extension context.
      */
-    constructor(private context: vscode.ExtensionContext) {
+    constructor(context: vscode.ExtensionContext) {
         this.cliClient = new TimdleClient(context);
     }
 

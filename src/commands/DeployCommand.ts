@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { TimdleClient, DeployResult } from '../cli/TimdleClient';
 import { ProjectRootDetector } from '../utils/ProjectRootDetector';
 import { TabularTreeProvider } from '../views/explorer/TabularTreeProvider';
-import { AuthService, WorkspaceInfo } from '../services/AuthService';
+import { AuthService } from '../services/AuthService';
 import { DeployConfig } from '../config/DeployConfig';
 import { AuthMode, AuthConfig, AUTH_ENV_VARS } from '../types/auth';
 
@@ -22,7 +22,7 @@ export class DeployCommand {
      * @param treeProvider - The tree provider to get the current model from.
      */
     constructor(
-        private context: vscode.ExtensionContext,
+        context: vscode.ExtensionContext,
         private treeProvider?: TabularTreeProvider
     ) {
         this.cliClient = new TimdleClient(context);
@@ -57,27 +57,27 @@ export class DeployCommand {
             return;
         }
 
-        // Authenticate
-        let authResult;
-        try {
-            this.outputChannel.show();
-            this.outputChannel.appendLine(`Authenticating using ${authMode} mode...`);
-            authResult = await this.authService.authenticate(authMode);
-            this.outputChannel.appendLine(`Authenticated as: ${authResult.account?.username || 'Unknown'}`);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Authentication failed: ${error instanceof Error ? error.message : String(error)}`);
-            return;
-        }
-
         // Build auth config for CLI
         const authConfig: AuthConfig = {
             mode: authMode,
             workspaceUrl: '' // Will be set below
         };
 
+        this.outputChannel.show();
+
         // Add token for interactive mode
+        let interactiveAccessToken: string | undefined;
         if (authMode === 'interactive') {
-            authConfig.accessToken = authResult.accessToken;
+            try {
+                this.outputChannel.appendLine('Authenticating using interactive mode...');
+                const authResult = await this.authService.authenticate('interactive');
+                interactiveAccessToken = authResult.accessToken;
+                authConfig.accessToken = interactiveAccessToken;
+                this.outputChannel.appendLine(`Authenticated as: ${authResult.account?.username || 'Unknown'}`);
+            } catch (error) {
+                vscode.window.showErrorMessage(`Authentication failed: ${error instanceof Error ? error.message : String(error)}`);
+                return;
+            }
         }
 
         // Add service principal credentials for non-interactive modes
@@ -101,10 +101,11 @@ export class DeployCommand {
             authConfig.clientId = credentials.clientId;
             authConfig.clientSecret = credentials.clientSecret;
             authConfig.tenantId = credentials.tenantId;
+            this.outputChannel.appendLine(`Using ${authMode} authentication mode.`);
         }
 
         // Get workspace URL (with access token for interactive mode to enable workspace picker)
-        const accessTokenForWorkspaceList = authMode === 'interactive' ? authResult.accessToken : undefined;
+        const accessTokenForWorkspaceList = authMode === 'interactive' ? interactiveAccessToken : undefined;
         const workspaceUrl = await this.getWorkspaceUrl(projectRoot, authMode, accessTokenForWorkspaceList);
         if (!workspaceUrl) {
             return;
